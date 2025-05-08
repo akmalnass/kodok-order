@@ -30,7 +30,7 @@ function App() {
   });
 
   return (
-    <Router basename={process.env.PUBLIC_URL}>
+    <Router basename="/kodok-order">
       <Routes>
         {/* Landing and Login Pages */}
         <Route path="/" element={<LandingPage />} />
