@@ -70,7 +70,7 @@ function CartPage({ cart, setCart }) {
 const styles = {
   container: {
     padding: '20px',
-    backgroundColor: '#f9f9f9',
+    backgroundColor: '#d8fcec',
     minHeight: '100vh',
     display: 'flex',
     flexDirection: 'column',

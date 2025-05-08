@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { HashRouter as Router, Routes, Route } from 'react-router-dom';
+import { HashRouter, Routes, Route } from 'react-router-dom';
 import LandingPage from './pages/LandingPage';
 import AdminLogin from './pages/AdminLogin';
 import StaffLogin from './pages/StaffLogin';
@@ -20,7 +20,7 @@ import CustomerMenu from './components/Customer/CustomerMenu';
 import CartPage from './components/Customer/CartPage';
 
 function App() {
-  // State untuk menyimpan cart bagi setiap meja
+
   const [tables, setTables] = useState({
     1: [], // Cart untuk Table 1
     2: [], // Cart untuk Table 2
@@ -30,7 +30,7 @@ function App() {
   });
 
   return (
-    <Router basename="/kodok-order">
+    <HashRouter>
       <Routes>
         {/* Landing and Login Pages */}
         <Route path="/" element={<LandingPage />} />
@@ -64,11 +64,11 @@ function App() {
             element={
               <CustomerMenu
                 tableId={tableId}
-                cart={tables[tableId]}
+                cart={tables[tableId]} // Ambil cart untuk meja tertentu
                 setCart={(newCart) =>
                   setTables((prevTables) => ({
                     ...prevTables,
-                    [tableId]: newCart,
+                    [tableId]: newCart, // Kemas kini cart untuk meja tertentu
                   }))
                 }
               />
@@ -78,24 +78,21 @@ function App() {
 
         {/* Cart Page */}
         <Route
-            path="/customer-menu/:tableId/cart"
-            element={
-              <CartPage
-                cart={tables}
-                setCart={(tableId, newCart) =>
-                  setTables((prevTables) => ({
-                    ...prevTables,
-                    [tableId]: newCart,
-                  }))
-                }
-              />
-            }
-          />
-
-        {/* 404 Page Not Found */}
-        <Route path="*" element={<div>404 - Page Not Found</div>} />
+          path="/customer-menu/:tableId/cart"
+          element={
+            <CartPage
+              cart={tables}
+              setCart={(tableId, newCart) =>
+                setTables((prevTables) => ({
+                  ...prevTables,
+                  [tableId]: newCart,
+                }))
+              }
+            />
+          }
+        />
       </Routes>
-    </Router>
+    </HashRouter>
   );
 }
 

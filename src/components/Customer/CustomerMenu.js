@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { getFirestore, collection, getDocs } from 'firebase/firestore';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import app from '../../firebase';
 
-function CustomerMenu({ cart, setCart }) {
-  const { tableId } = useParams(); // Ambil tableId dari URL
+function CustomerMenu({ tableId, cart, setCart }) {
   const [menu, setMenu] = useState([]);
   const [filteredMenu, setFilteredMenu] = useState([]);
   const [category, setCategory] = useState('All');
@@ -19,6 +18,7 @@ function CustomerMenu({ cart, setCart }) {
         id: doc.id,
         ...doc.data(),
       }));
+      console.log('Menu Data:', menuData); // Debugging data menu
       setMenu(menuData);
       setFilteredMenu(menuData);
     };
@@ -29,6 +29,7 @@ function CustomerMenu({ cart, setCart }) {
   const handleCategoryChange = (e) => {
     const selectedCategory = e.target.value;
     setCategory(selectedCategory);
+
     if (selectedCategory === 'All') {
       setFilteredMenu(menu);
     } else {
@@ -64,7 +65,8 @@ function CustomerMenu({ cart, setCart }) {
   return (
     <div style={styles.container}>
       <header style={styles.header}>
-        <h1>Customer Menu - Table {tableId}</h1>
+      <h1>Welcome to KodokKodok</h1>
+        <h2>Customer Menu - Table {tableId}</h2>
       </header>
 
       <div style={styles.categorySelector}>
@@ -76,9 +78,11 @@ function CustomerMenu({ cart, setCart }) {
           style={styles.select}
         >
           <option value="All">All</option>
-          <option value="Drinks">Drinks</option>
+          <option value="Hot Drinks">Hot Drinks</option>
+          <option value="Cold Drinks">Cold Drinks</option>
           <option value="Main Course">Main Course</option>
           <option value="Dessert">Dessert</option>
+          <option value="Side Dish">Side Dish</option>
         </select>
       </div>
 
@@ -117,7 +121,7 @@ function CustomerMenu({ cart, setCart }) {
 const styles = {
   container: {
     padding: '20px',
-    backgroundColor: '#f9f9f9',
+    backgroundColor: '#d3feea',
     minHeight: '100vh',
   },
   header: {
@@ -125,12 +129,15 @@ const styles = {
   },
   categorySelector: {
     marginBottom: '20px',
+    display: 'flex', // Tambahkan untuk membuat label dan dropdown sejajar
+    alignItems: 'center',
   },
   select: {
     padding: '10px',
     fontSize: '16px',
     borderRadius: '5px',
     border: '1px solid #ccc',
+    marginLeft: '10px', // Tambahkan margin kiri untuk menggeser dropdown
   },
   menuList: {
     display: 'grid',

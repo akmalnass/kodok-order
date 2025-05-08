@@ -49,6 +49,9 @@ export const updateSales = async (orderTotal) => {
         updatedMonthlySales.push({ month: currentMonth, sales: orderTotal });
       }
 
+      console.log('Before Updating Daily Sales:', updatedDailySales);
+      console.log('Before Updating Monthly Sales:', updatedMonthlySales);
+
       // Perbarui dokumen di Firestore
       await updateDoc(salesDocRef, {
         dailySales: updatedDailySales,
@@ -74,51 +77,49 @@ export const updateSales = async (orderTotal) => {
 
 export const resetSales = async () => {
   const salesDocRef = doc(db, 'sales', 'dashboard');
-  const today = new Date();
-  const currentMonth = today.toLocaleString('default', { month: 'long' });
 
   try {
     const salesDoc = await getDoc(salesDocRef);
 
     if (salesDoc.exists()) {
-      const salesData = salesDoc.data();
+      console.log('Resetting Daily Sales:', salesDoc.data()); // Debug log
 
       // Reset Daily Sales
       await updateDoc(salesDocRef, {
-        dailySales: [],
-        dailyTotalSales: 0,
+        dailySales: [], // Reset ke array kosong
       });
 
-      // Reset Monthly Sales jika bulan baru
-      const lastMonth = salesData.monthlySales[salesData.monthlySales.length - 1]?.month;
-      if (lastMonth !== currentMonth) {
-        await updateDoc(salesDocRef, {
-          monthlySales: [],
-          monthlyTotalSales: 0,
-        });
-      }
+      console.log('Daily Sales Reset Successfully'); // Debug log
+    } else {
+      console.error('Sales document does not exist!');
     }
   } catch (err) {
     console.error('Error resetting sales:', err);
   }
 };
 
-// Panggil fungsi ini pada tengah malam
-setInterval(() => {
+const scheduleResetSales = () => {
   const now = new Date();
   const timeUntilMidnight =
     new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0) - now;
 
+  console.log(`Time until midnight: ${timeUntilMidnight}ms`); // Debug log
+
   setTimeout(() => {
-    resetSales();
+    resetSales(); // Panggil fungsi resetSales untuk mengatur ulang dailySales
+    scheduleResetSales(); // Jadwalkan ulang untuk hari berikutnya
   }, timeUntilMidnight);
-}, 86400000); // Jalankan setiap 24 jam
+};
+
+// Panggil fungsi untuk menjadwalkan reset
+scheduleResetSales();
 
 function SalesDashboard() {
   const [salesData, setSalesData] = useState({
     dailySales: [], // Inisialisasi sebagai array kosong
     monthlySales: [], // Inisialisasi sebagai array kosong
   });
+  const [dailySalesBox, setDailySalesBox] = useState(0); // State untuk Daily Sales Box
 
   useEffect(() => {
     const db = getFirestore(app);
@@ -127,7 +128,21 @@ function SalesDashboard() {
     const unsubscribe = onSnapshot(salesDocRef, (docSnapshot) => {
       if (docSnapshot.exists()) {
         const data = docSnapshot.data();
+        const today = new Date();
+        const currentDay = today.getDate().toString(); // Hari ini dalam bentuk string
+
         console.log('Fetched Sales Data:', data); // Debug log
+
+        // Hitung total penjualan untuk hari ini
+        const todaySales = Array.isArray(data.dailySales)
+          ? data.dailySales
+              .filter((day) => day.day === currentDay) // Hanya ambil data untuk hari ini
+              .reduce((total, day) => total + (day.sales || 0), 0)
+          : 0;
+
+        setDailySalesBox(todaySales); // Perbarui Daily Sales Box
+
+        // Tetapkan data untuk grafik
         setSalesData({
           dailySales: Array.isArray(data.dailySales)
             ? data.dailySales.map((day) => ({
@@ -144,6 +159,7 @@ function SalesDashboard() {
         });
       } else {
         console.error('Sales document does not exist!');
+        setDailySalesBox(0); // Reset Daily Sales Box jika dokumen tidak ada
         setSalesData({
           dailySales: [],
           monthlySales: [],
@@ -164,14 +180,7 @@ function SalesDashboard() {
       <div style={styles.statsContainer}>
         <div style={styles.statBox}>
           <p>Daily Sales</p>
-          <h4>
-            RM{' '}
-            {Array.isArray(salesData.dailySales)
-              ? Number(
-                  salesData.dailySales.reduce((total, day) => total + (day.sales || 0), 0)
-                ).toFixed(2)
-              : '0.00'}
-          </h4>
+          <h4>RM {Number(dailySalesBox).toFixed(2)}</h4> {/* Gunakan dailySalesBox */}
         </div>
         <div style={styles.statBox}>
           <p>Monthly Sales</p>
