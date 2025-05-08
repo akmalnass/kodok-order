@@ -30,7 +30,7 @@ function App() {
   });
 
   return (
-    <Router>
+    <Router basename={process.env.PUBLIC_URL}> 
       <Routes>
         {/* Landing and Login Pages */}
         <Route path="/" element={<LandingPage />} />
