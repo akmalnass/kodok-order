@@ -1,15 +1,15 @@
 {
   "files": {
     "main.css": "/kodok-order/static/css/main.5243db61.css",
-    "main.js": "/kodok-order/static/js/main.d3e7f59d.js",
+    "main.js": "/kodok-order/static/js/main.8a5d5ba1.js",
     "static/media/KodokKodok.png": "/kodok-order/static/media/KodokKodok.ae013c91aaf96ccebca9.png",
     "static/media/Coffee.jpg": "/kodok-order/static/media/Coffee.2f68acb185c3c0ad3f2c.jpg",
     "index.html": "/kodok-order/index.html",
     "main.5243db61.css.map": "/kodok-order/static/css/main.5243db61.css.map",
-    "main.d3e7f59d.js.map": "/kodok-order/static/js/main.d3e7f59d.js.map"
+    "main.8a5d5ba1.js.map": "/kodok-order/static/js/main.8a5d5ba1.js.map"
   },
   "entrypoints": [
     "static/css/main.5243db61.css",
-    "static/js/main.d3e7f59d.js"
+    "static/js/main.8a5d5ba1.js"
   ]
 }
