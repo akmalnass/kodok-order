@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { getFirestore, collection, getDocs } from 'firebase/firestore';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import app from '../../firebase';
 
-function CustomerMenu({ tableId, cart, setCart }) {
+function CustomerMenu({ cart, setCart }) {
+  const { tableId } = useParams(); // Ambil tableId dari URL
   const [menu, setMenu] = useState([]);
   const [filteredMenu, setFilteredMenu] = useState([]);
   const [category, setCategory] = useState('All');

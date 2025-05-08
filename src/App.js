@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { HashRouter as Router, Routes, Route } from 'react-router-dom';
 import LandingPage from './pages/LandingPage';
 import AdminLogin from './pages/AdminLogin';
 import StaffLogin from './pages/StaffLogin';
@@ -64,11 +64,11 @@ function App() {
             element={
               <CustomerMenu
                 tableId={tableId}
-                cart={tables[tableId]} // Ambil cart untuk meja tertentu
+                cart={tables[tableId]}
                 setCart={(newCart) =>
                   setTables((prevTables) => ({
                     ...prevTables,
-                    [tableId]: newCart, // Kemas kini cart untuk meja tertentu
+                    [tableId]: newCart,
                   }))
                 }
               />
@@ -91,6 +91,9 @@ function App() {
               />
             }
           />
+
+        {/* 404 Page Not Found */}
+        <Route path="*" element={<div>404 - Page Not Found</div>} />
       </Routes>
     </Router>
   );
