@@ -1,16 +1,47 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom'; // Tambahkan Outlet
+import { collection, onSnapshot, } from 'firebase/firestore';
+import { db } from '../firebase'; // Sesuaikan path dengan lokasi baru
 import Header from '../components/Shared/Header';
 import logo from '../assets/KodokKodok.png';
+
 
 function AdminPage() {
   const navigate = useNavigate();
   const location = useLocation(); // Untuk mendapatkan path semasa
+  const [notifications, setNotifications] = useState([]);
+
+  // Fungsi untuk menambahkan notifikasi ke Firestore
+
+  // Mendengarkan notifikasi secara real-time dari Firestore
+  useEffect(() => {
+    const unsubscribe = onSnapshot(
+      collection(db, 'notifications'),
+      (snapshot) => {
+        const adminNotifications = snapshot.docs
+          .map((doc) => {
+            const data = doc.data();
+            return {
+              id: doc.id,
+              ...data,
+              time: data.time.toDate().toLocaleString(), // Konversi Timestamp ke string
+            };
+          })
+          .filter((notif) => notif.role === 'Admin'); // Filter untuk Admin
+        setNotifications(adminNotifications);
+      }
+    );
+
+    return () => unsubscribe(); // Bersihkan listener saat komponen unmount
+  }, []);
 
   const handleLogout = () => {
     localStorage.clear(); // Clear all data from localStorage
     navigate('/admin-login'); // Redirect to Admin Login Page
   };
+
+
+  console.log('Admin Notifications:', notifications);
 
   return (
     <div style={styles.container}>
@@ -61,7 +92,7 @@ function AdminPage() {
       </div>
 
       <div style={styles.mainContent}>
-        <Header title="Admin" />
+        <Header title="Admin" notifications={notifications} />
         <div style={styles.content}>
           <Outlet /> {/* Tambahkan Outlet untuk memaparkan kandungan halaman anak */}
         </div>

@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { getFirestore, collection, getDocs, addDoc } from 'firebase/firestore';
+import { getFirestore, collection, getDocs, addDoc, onSnapshot } from 'firebase/firestore';
 import app from '../../firebase';
+import Header from '../Shared/Header';
+import notificationSound from '../../assets/notification.mp3';
 
 function WaiterDashboard() {
   const [menu, setMenu] = useState([]);
@@ -9,11 +11,12 @@ function WaiterDashboard() {
   const [error, setError] = useState('');
   const [tables] = useState([1, 2, 3, 4, 5]); // Senarai meja
   const [selectedCategory, setSelectedCategory] = useState('All'); // Default ke 'All'
+  const [notifications, setNotifications] = useState([]);
+  const [isUserInteracted, setIsUserInteracted] = useState(false); // Tambahkan state ini
 
   useEffect(() => {
+    const db = getFirestore(app);
     const fetchMenu = async () => {
-      const db = getFirestore(app);
-
       try {
         const querySnapshot = await getDocs(collection(db, 'menu'));
         const fetchedMenu = [];
@@ -29,6 +32,46 @@ function WaiterDashboard() {
     };
 
     fetchMenu();
+  }, []);
+
+  useEffect(() => {
+    const db = getFirestore(app);
+    const unsubscribe = onSnapshot(
+      collection(db, 'notifications'),
+      (snapshot) => {
+        const waiterNotifications = snapshot.docs.map((doc) => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            ...data,
+            time: data.time.toDate().toLocaleString(),
+          };
+        }).filter((notif) => notif.role === 'Waiter'); // Hanya untuk Waiter
+
+        // Jika ada notifikasi baru, mainkan suara
+        if (waiterNotifications.length > notifications.length && isUserInteracted) {
+          const audio = new Audio(notificationSound);
+          audio.play().catch((err) => console.error('Audio play failed:', err));
+        }
+
+        setNotifications(waiterNotifications);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [notifications, isUserInteracted]);
+
+  useEffect(() => {
+    const handleUserInteraction = () => {
+      setIsUserInteracted(true);
+      window.removeEventListener('click', handleUserInteraction);
+    };
+
+    window.addEventListener('click', handleUserInteraction);
+
+    return () => {
+      window.removeEventListener('click', handleUserInteraction);
+    };
   }, []);
 
   const handleQuantityChange = (menuItemId, increment) => {
@@ -69,7 +112,7 @@ function WaiterDashboard() {
     setNewOrder(selectedItems);
   };
 
-  const handleSubmitOrder = async () => {
+  const handleOrderSubmit = async () => {
     const db = getFirestore(app);
 
     // Dapatkan item yang dipilih secara langsung dari menu
@@ -81,26 +124,46 @@ function WaiterDashboard() {
       return;
     }
 
-    // Format orderDetails dengan price dan totalPrice
-    const orderDetails = selectedItems.map((item) => ({
-      menuItemId: item.id,
+    // Format orderDetails dengan hanya properti yang diperlukan
+    const formattedOrderDetails = selectedItems.map((item) => ({
+      menuItemId: item.id, // Gunakan id sebagai menuItemId
       name: item.name,
       price: item.price,
       quantity: item.quantity,
-      totalPrice: item.price * item.quantity, // Kira total harga untuk item ini
+      totalPrice: item.price * item.quantity, // Hitung total harga untuk item ini
     }));
 
-    // Kira jumlah keseluruhan harga untuk pesanan
-    const totalOrderPrice = orderDetails.reduce((sum, item) => sum + item.totalPrice, 0);
+    const totalOrderPrice = formattedOrderDetails.reduce(
+      (sum, item) => sum + item.totalPrice,
+      0
+    );
+
+    console.log('Formatted Order Details:', formattedOrderDetails);
 
     try {
-      // Simpan pesanan ke Firestore
+      // Tambahkan pesanan ke koleksi 'orders'
       await addDoc(collection(db, 'orders'), {
         tableNumber,
+        orderDetails: formattedOrderDetails, // Gunakan formattedOrderDetails
+        totalPrice: totalOrderPrice, // Tambahkan total harga untuk seluruh pesanan
         status: 'Pending',
-        orderDetails,
-        totalPrice: totalOrderPrice, // Simpan jumlah keseluruhan harga
         createdAt: new Date(),
+      });
+
+      // Tambahkan notifikasi untuk Kitchen
+      await addDoc(collection(db, 'notifications'), {
+        message: `New order from Waiter for Table ${tableNumber}`,
+        time: new Date(),
+        role: 'Kitchen', // Notifikasi untuk Kitchen
+        isRead: false,
+      });
+
+      // Tambahkan notifikasi untuk Admin
+      await addDoc(collection(db, 'notifications'), {
+        message: `New order submitted by Waiter for Table ${tableNumber}`,
+        time: new Date(),
+        role: 'Admin', // Notifikasi untuk Admin
+        isRead: false,
       });
 
       // Reset state selepas berjaya
@@ -116,7 +179,6 @@ function WaiterDashboard() {
     }
   };
 
-
   // Filter menu berdasarkan kategori yang dipilih
   const filteredMenu = selectedCategory === 'All'
     ? menu // Tampilkan semua item jika kategori adalah 'All'
@@ -125,15 +187,26 @@ function WaiterDashboard() {
   console.log('Selected Category:', selectedCategory);
   console.log('Filtered Menu:', filteredMenu);
   console.log('Updated Order:', newOrder); // Menambah log untuk newOrder
+  console.log('Order Data:', {
+    tableNumber,
+    orderDetails: newOrder,
+    status: 'Pending',
+    createdAt: new Date(),
+  });
 
   return (
     <div style={styles.container}>
-      <h2>Waiter Dashboard</h2>
-
+      <Header title="Waiter Dashboard" notifications={notifications} />
       <div style={styles.form}>
         <label htmlFor="tableNumber" style={styles.label}>
           Table Number:
         </label>
+        <input
+          type="text"
+          placeholder="Enter table number"
+          style={styles.inputBox}
+        />
+        <p style={styles.orText}>OR</p>
         <select
           id="tableNumber"
           value={tableNumber}
@@ -149,14 +222,6 @@ function WaiterDashboard() {
             </option>
           ))}
         </select>
-        <p style={styles.orText}>OR</p>
-        <input
-          type="number"
-          value={tableNumber}
-          onChange={(e) => setTableNumber(e.target.value)}
-          style={styles.input}
-          placeholder="Enter table number"
-        />
       </div>
 
       <div style={styles.menuSection}>
@@ -170,7 +235,7 @@ function WaiterDashboard() {
             id="category"
             value={selectedCategory}
             onChange={(e) => setSelectedCategory(e.target.value)}
-            style={styles.select}
+            style={styles.categorySelect} // Terapkan gaya baru
           >
             <option value="All">All</option>
             {Array.from(new Set(menu.map((item) => item.category))).map((category) => (
@@ -219,7 +284,7 @@ function WaiterDashboard() {
           ))}
         </ul>
         <h4>
-          Total: RM{' '}
+          Total Order Price: RM{' '}
           {newOrder
             .reduce((sum, item) => sum + item.price * item.quantity, 0)
             .toFixed(2)}
@@ -234,7 +299,7 @@ function WaiterDashboard() {
           style={styles.confirmButton}
           onClick={() => {
             handleAddToOrder(); // Tambahkan item ke dalam pesanan
-            handleSubmitOrder(); // Hantar pesanan
+            handleOrderSubmit(); // Hantar pesanan
           }}
         >
           Confirm
@@ -242,6 +307,7 @@ function WaiterDashboard() {
       </div>
 
       {error && <p style={styles.error}>{error}</p>}
+
     </div>
   );
 }
@@ -249,7 +315,7 @@ function WaiterDashboard() {
 const styles = {
   container: {
     padding: '20px',
-    backgroundColor: '#f9f9f9',
+    backgroundColor: '#D3FEEA',
     borderRadius: '8px',
     boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
     maxWidth: '800px',
@@ -289,21 +355,30 @@ const styles = {
     marginBottom: '20px',
   },
   menuList: {
-    listStyleType: 'none',
+    display: 'grid', // Ubah menjadi grid
+    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', // Kolom responsif
+    gap: '20px', // Jarak antar item
     padding: 0,
+    listStyleType: 'none',
   },
   menuItem: {
     display: 'flex',
+    flexDirection: 'column', // Susun konten secara vertikal
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: '10px',
-    borderBottom: '1px solid #ddd',
+    border: '1px solid #ddd',
+    borderRadius: '8px', // Tambahkan border radius untuk tampilan lebih halus
+    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)', // Tambahkan bayangan
+    backgroundColor: '#fff', // Latar belakang putih
   },
   menuDetails: {
-    flex: 1,
+    textAlign: 'center', // Pusatkan teks
+    marginBottom: '10px',
   },
   quantityControls: {
     display: 'flex',
+    justifyContent: 'center',
     alignItems: 'center',
     gap: '10px',
   },
@@ -349,6 +424,40 @@ const styles = {
   error: {
     color: 'red',
     marginTop: '10px',
+  },
+  inputBox: {
+    width: '780px', // Sesuaikan lebar input box
+    padding: '8px',
+    fontSize: '14px',
+    border: '1px solid #ccc',
+    borderRadius: '5px',
+    marginTop: '10px',
+  },
+  categorySelect: {
+    padding: '8px', // Kurangi padding
+    fontSize: '14px', // Sesuaikan ukuran font
+    border: '1px solid #ccc',
+    borderRadius: '5px',
+    width: '200px', // Sesuaikan lebar box
+  },
+  notificationSection: {
+    marginTop: '20px',
+    padding: '10px',
+    backgroundColor: '#fff',
+    borderRadius: '8px',
+    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+  },
+  notificationItem: {
+    padding: '10px',
+    borderBottom: '1px solid #ddd',
+  },
+  notificationMessage: {
+    margin: 0,
+    fontSize: '14px',
+  },
+  notificationTime: {
+    fontSize: '12px',
+    color: '#888',
   },
 };
 

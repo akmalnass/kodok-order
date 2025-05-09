@@ -1,11 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { getFirestore, collection, query, where, getDocs, updateDoc, doc, getDoc } from 'firebase/firestore';
+import { getFirestore, collection, query, where, getDocs, updateDoc, doc, getDoc, onSnapshot, addDoc } from 'firebase/firestore';
 import app from '../../firebase';
 import { useNavigate } from 'react-router-dom';
+import Header from '../Shared/Header';
+import notificationSound from '../../assets/notification.mp3';
 
 function KitchenDashboard() {
   const [orders, setOrders] = useState([]);
   const [error, setError] = useState('');
+  const [notifications, setNotifications] = useState([]);
+  const [isUserInteracted, setIsUserInteracted] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -19,24 +23,47 @@ function KitchenDashboard() {
         const fetchedOrders = [];
         for (const orderDoc of querySnapshot.docs) {
           const orderData = orderDoc.data();
+          console.log('Order Data:', orderData); // Debug log
+          console.log('Order Details:', orderData.orderDetails);
+
+          // Validasi orderDetails
+          if (!Array.isArray(orderData.orderDetails)) {
+            console.error(`Invalid orderDetails for order ID: ${orderDoc.id}`, orderData.orderDetails);
+            continue; // Lewati dokumen ini jika orderDetails tidak valid
+          }
+
+          // Proses orderDetails
           const orderDetails = await Promise.all(
             orderData.orderDetails.map(async (detail) => {
-              console.log('Fetching menu item with ID:', detail.menuItemId);
-              const menuDoc = await getDoc(doc(db, 'menu', detail.menuItemId));
-              if (menuDoc.exists()) {
-                return {
-                  ...menuDoc.data(),
-                  quantity: detail.quantity,
-                };
-              } else {
-                console.warn('Menu item not found for ID:', detail.menuItemId);
+              if (!detail.menuItemId) {
+                console.warn('Invalid menuItemId in orderDetails:', detail);
                 return { name: 'Unknown Item', quantity: detail.quantity };
               }
+
+              console.log('Fetching menu item with ID:', detail.menuItemId);
+              const menuDoc = await getDoc(doc(db, 'menu', detail.menuItemId));
+              if (!menuDoc.exists()) {
+                console.warn('Menu item not found for ID:', detail.menuItemId);
+              }
+
+              return {
+                ...menuDoc.data(),
+                quantity: detail.quantity,
+              };
             })
           );
 
-          fetchedOrders.push({ id: orderDoc.id, ...orderData, orderDetails });
+          fetchedOrders.push({
+            id: orderDoc.id,
+            tableNumber: orderData.tableNumber,
+            status: orderData.status,
+            createdAt: orderData.createdAt,
+            orderDetails,
+          });
         }
+
+        console.log('Fetched Orders:', fetchedOrders);
+        console.log('Real-time Orders:', fetchedOrders);
 
         setOrders(fetchedOrders);
       } catch (err) {
@@ -48,10 +75,38 @@ function KitchenDashboard() {
     fetchOrders();
   }, []);
 
-  const handleMarkAsReady = async (orderId) => {
+  useEffect(() => {
+    const db = getFirestore(app);
+    const unsubscribe = onSnapshot(
+      collection(db, 'notifications'),
+      (snapshot) => {
+        const kitchenNotifications = snapshot.docs.map((doc) => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            ...data,
+            time: data.time.toDate().toLocaleString(),
+          };
+        }).filter((notif) => notif.role === 'Kitchen'); // Hanya untuk Kitchen
+
+        // Jika ada notifikasi baru, mainkan suara
+        if (kitchenNotifications.length > notifications.length && isUserInteracted) {
+          const audio = new Audio(notificationSound);
+          audio.play().catch((err) => console.error('Audio play failed:', err));
+        }
+
+        setNotifications(kitchenNotifications);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [notifications, isUserInteracted]);
+
+  const handleMarkAsReady = async (orderId, tableNumber) => {
     const db = getFirestore(app);
 
     try {
+      // Update status pesanan menjadi "Ready"
       const orderRef = doc(db, 'orders', orderId);
       await updateDoc(orderRef, { status: 'Ready' });
 
@@ -61,8 +116,26 @@ function KitchenDashboard() {
           order.id === orderId ? { ...order, status: 'Ready' } : order
         )
       );
+
+      // Kirim notifikasi ke Admin
+      await addDoc(collection(db, 'notifications'), {
+        message: `Order for Table ${tableNumber} is Ready to Serve`,
+        time: new Date(),
+        role: 'Admin', // Notifikasi untuk Admin
+        isRead: false,
+      });
+
+      // Kirim notifikasi ke Waiter
+      await addDoc(collection(db, 'notifications'), {
+        message: `Order for Table ${tableNumber} is Ready to Serve`,
+        time: new Date(),
+        role: 'Waiter', // Notifikasi untuk Waiter
+        isRead: false,
+      });
+
+      console.log(`Order for Table ${tableNumber} marked as Ready and notifications sent.`);
     } catch (err) {
-      console.error('Error updating order status:', err);
+      console.error('Error updating order status or sending notifications:', err);
       setError('Failed to update order status. Please try again.');
     }
   };
@@ -72,9 +145,38 @@ function KitchenDashboard() {
     navigate('/staff-login'); // Redirect to Staff Login Page
   };
 
+  const markAsRead = async (id) => {
+    const db = getFirestore(app);
+    console.log('Marking notification as read with ID:', id); // Debug log
+    try {
+      const notificationRef = doc(db, 'notifications', id);
+      await updateDoc(notificationRef, { isRead: true });
+      console.log(`Notification ${id} marked as read`);
+    } catch (err) {
+      console.error('Error marking notification as read:', err);
+    }
+  };
+
+  useEffect(() => {
+    const handleUserInteraction = () => {
+      setIsUserInteracted(true);
+      window.removeEventListener('click', handleUserInteraction);
+    };
+
+    window.addEventListener('click', handleUserInteraction);
+
+    return () => {
+      window.removeEventListener('click', handleUserInteraction);
+    };
+  }, []);
+
   return (
     <div style={styles.container}>
-      <h2>Kitchen Dashboard</h2>
+      <Header
+        title="Kitchen Dashboard"
+        notifications={notifications}
+        markAsRead={markAsRead} // Teruskan fungsi markAsRead ke Header
+      />
       <h3>Orders</h3>
       {error && <p style={styles.error}>{error}</p>}
       <ul style={styles.orderList}>
@@ -101,7 +203,7 @@ function KitchenDashboard() {
               {order.status === 'Pending' && (
                 <button
                   style={styles.button}
-                  onClick={() => handleMarkAsReady(order.id)}
+                  onClick={() => handleMarkAsReady(order.id, order.tableNumber)}
                 >
                   Mark as Ready
                 </button>
@@ -115,6 +217,7 @@ function KitchenDashboard() {
       <button style={styles.logoutButton} onClick={handleLogout}>
         Log Out
       </button>
+      {/* Simulasi Event */}
     </div>
   );
 }
@@ -122,7 +225,7 @@ function KitchenDashboard() {
 const styles = {
   container: {
     padding: '20px',
-    backgroundColor: '#f9f9f9',
+    backgroundColor: '#D3FEEA',
     borderRadius: '8px',
     boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
     maxWidth: '800px',
