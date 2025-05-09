@@ -68,6 +68,12 @@ export const updateSales = async (orderTotal) => {
         monthlySales: [{ month: currentMonth, sales: orderTotal }],
       });
 
+      // Tambahkan dokumen baru untuk dailySales
+      await setDoc(doc(db, 'sales', 'dailySales'), {
+        day: currentDay,
+        sales: 0,
+      });
+
       console.log('Daily and Monthly Sales Initialized');
     }
   } catch (err) {
@@ -144,12 +150,31 @@ function SalesDashboard() {
         setDailySalesBox(todaySales); // Perbarui Daily Sales Box
 
         // Tetapkan data untuk grafik
+        const fillMissingDays = (dailySales) => {
+          const today = new Date();
+          const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+          const filledSales = [];
+
+          for (let i = 1; i <= daysInMonth; i++) {
+            const existingDay = dailySales.find((day) => Number(day.day) === i);
+            if (existingDay) {
+              filledSales.push(existingDay);
+            } else {
+              filledSales.push({ day: i.toString(), sales: 0 }); // Tambahkan hari tanpa penjualan
+            }
+          }
+
+          return filledSales;
+        };
+
         setSalesData({
           dailySales: Array.isArray(data.dailySales)
-            ? data.dailySales.map((day) => ({
-                day: day.day || '',
-                sales: typeof day.sales === 'number' ? day.sales : 0,
-              }))
+            ? fillMissingDays(
+                data.dailySales.map((day) => ({
+                  day: day.day || '',
+                  sales: typeof day.sales === 'number' ? day.sales : 0,
+                }))
+              ).sort((a, b) => Number(a.day) - Number(b.day)) // Urutkan berdasarkan hari
             : [],
           monthlySales: Array.isArray(data.monthlySales)
             ? data.monthlySales.map((month) => ({
@@ -205,6 +230,7 @@ function SalesDashboard() {
 
   console.log('Fetched Sales Data:', salesData);
   console.log('Menu Data for Pie Chart:', menuData);
+  console.log('Daily Sales Data:', salesData.dailySales); // <-- Added line
 
   // Warna untuk grafik
   const COLORS = ['#43a047', '#6d4c41', '#1e88e5', '#f4511e', '#ffb300', '#8e24aa'];
