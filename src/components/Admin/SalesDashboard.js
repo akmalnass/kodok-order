@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { getFirestore, doc, onSnapshot, updateDoc, getDoc, setDoc } from 'firebase/firestore';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, LineChart, Line } from 'recharts';
+import { getFirestore, doc, onSnapshot, updateDoc, getDoc, setDoc, collection, getDocs } from 'firebase/firestore';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
 import app from '../../firebase';
 
 const db = getFirestore(app);
@@ -120,6 +120,7 @@ function SalesDashboard() {
     monthlySales: [], // Inisialisasi sebagai array kosong
   });
   const [dailySalesBox, setDailySalesBox] = useState(0); // State untuk Daily Sales Box
+  const [menuData, setMenuData] = useState([]);
 
   useEffect(() => {
     const db = getFirestore(app);
@@ -170,7 +171,43 @@ function SalesDashboard() {
     return () => unsubscribe();
   }, []);
 
+  useEffect(() => {
+    const fetchOrderData = async () => {
+      const db = getFirestore(app);
+      const ordersSnapshot = await getDocs(collection(db, 'orders'));
+
+      // Hitung jumlah pesanan berdasarkan menuItemId
+      const menuOrderCount = {};
+      ordersSnapshot.docs.forEach((doc) => {
+        const orderDetails = doc.data().orderDetails || [];
+        orderDetails.forEach((item) => {
+          if (menuOrderCount[item.menuItemId]) {
+            menuOrderCount[item.menuItemId] += item.quantity;
+          } else {
+            menuOrderCount[item.menuItemId] = item.quantity;
+          }
+        });
+      });
+
+      // Gabungkan data menu dengan jumlah pesanan
+      const menuSnapshot = await getDocs(collection(db, 'menu'));
+      const menuItems = menuSnapshot.docs.map((doc) => ({
+        id: doc.id,
+        name: doc.data().name,
+        orders: menuOrderCount[doc.id] || 0, // Ambil jumlah pesanan dari menuOrderCount
+      }));
+
+      setMenuData(menuItems);
+    };
+
+    fetchOrderData();
+  }, []);
+
   console.log('Fetched Sales Data:', salesData);
+  console.log('Menu Data for Pie Chart:', menuData);
+
+  // Warna untuk grafik
+  const COLORS = ['#43a047', '#6d4c41', '#1e88e5', '#f4511e', '#ffb300', '#8e24aa'];
 
   return (
     <div style={styles.container}>
@@ -195,25 +232,54 @@ function SalesDashboard() {
         </div>
       </div>
 
-      {/* Graf Bulanan */}
-      <h3>Monthly Sales</h3>
-      <BarChart width={600} height={300} data={salesData.monthlySales}>
-        <CartesianGrid strokeDasharray="3 3" />
-        <XAxis dataKey="month" />
-        <YAxis />
-        <Tooltip />
-        <Bar dataKey="sales" fill="#8884d8" />
-      </BarChart>
+      {/* Graf Bulanan dan Harian */}
+      <div style={styles.graphContainer}>
+        {/* Bar Graph (Monthly Sales) */}
+        <div style={styles.graphBox}>
+          <h3>Monthly Sales</h3>
+          <BarChart width={300} height={300} data={salesData.monthlySales}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="month" />
+            <YAxis />
+            <Tooltip />
+            <Bar dataKey="sales" fill="#1e88e5" /> {/* Warna biru tua */}
+          </BarChart>
+        </div>
 
-      {/* Graf Harian */}
-      <h3>Daily Sales</h3>
-      <LineChart width={600} height={300} data={salesData.dailySales}>
-        <CartesianGrid strokeDasharray="3 3" />
-        <XAxis dataKey="day" />
-        <YAxis />
-        <Tooltip />
-        <Line type="monotone" dataKey="sales" stroke="#82ca9d" />
-      </LineChart>
+        {/* Line Graph (Daily Sales) */}
+        <div style={styles.graphBox}>
+          <h3>Daily Sales</h3>
+          <LineChart width={300} height={300} data={salesData.dailySales}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="day" />
+            <YAxis />
+            <Tooltip />
+            <Line type="monotone" dataKey="sales" stroke="#43a047" /> {/* Warna hijau */}
+          </LineChart>
+        </div>
+
+        {/* Pie Chart (Top Ordered Menu) */}
+        <div style={styles.graphBox}>
+          <h3>Top Ordered Menu</h3>
+          <PieChart width={300} height={300}>
+            <Pie
+              data={menuData}
+              dataKey="orders"
+              nameKey="name"
+              cx="50%"
+              cy="50%"
+              outerRadius={100}
+              label
+              fill={(entry, index) => COLORS[index % COLORS.length]} // Warna berdasarkan indeks
+            >
+              {menuData.map((entry, index) => (
+                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+              ))}
+            </Pie>
+            <Tooltip />
+          </PieChart>
+        </div>
+      </div>
     </div>
   );
 }
@@ -240,6 +306,20 @@ const styles = {
     textAlign: 'center',
     margin: '0 10px',
     boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+  },
+  graphContainer: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    gap: '20px',
+    marginBottom: '20px',
+  },
+  graphBox: {
+    flex: 1,
+    backgroundColor: '#fff',
+    borderRadius: '8px',
+    padding: '20px',
+    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+    textAlign: 'center',
   },
 };
 
