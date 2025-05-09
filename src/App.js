@@ -64,13 +64,8 @@ function App() {
             element={
               <CustomerMenu
                 tableId={tableId}
-                cart={tables[tableId]} // Ambil cart untuk meja tertentu
-                setCart={(newCart) =>
-                  setTables((prevTables) => ({
-                    ...prevTables,
-                    [tableId]: newCart, // Kemas kini cart untuk meja tertentu
-                  }))
-                }
+                cart={tables} // Ambil cart untuk meja tertentu
+                setCart={setTables}
               />
             }
           />
@@ -79,17 +74,7 @@ function App() {
         {/* Cart Page */}
         <Route
           path="/customer-menu/:tableId/cart"
-          element={
-            <CartPage
-              cart={tables}
-              setCart={(tableId, newCart) =>
-                setTables((prevTables) => ({
-                  ...prevTables,
-                  [tableId]: newCart,
-                }))
-              }
-            />
-          }
+          element={<CartPage cart={tables} setCart={setTables} />}
         />
       </Routes>
     </HashRouter>

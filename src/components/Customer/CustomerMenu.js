@@ -37,30 +37,26 @@ function CustomerMenu({ tableId, cart, setCart }) {
     }
   };
 
-  const handleAddToCart = (menuItem) => {
-    setCart((prevCart) => {
-      const currentTableCart = prevCart[tableId] || [];
-      const existingItem = currentTableCart.find((item) => item.id === menuItem.id);
+const handleAddToCart = (menuItem) => {
+  setCart((prevTables) => {
+    const currentTableCart = prevTables[tableId] || [];
+    const existingItem = currentTableCart.find((item) => item.id === menuItem.id);
 
-      let updatedTableCart;
-      if (existingItem) {
-        updatedTableCart = currentTableCart.map((item) =>
-          item.id === menuItem.id ? { ...item, quantity: item.quantity + 1 } : item
-        );
-      } else {
-        updatedTableCart = [...currentTableCart, { ...menuItem, quantity: 1 }];
-      }
+    let updatedTableCart;
+    if (existingItem) {
+      updatedTableCart = currentTableCart.map((item) =>
+        item.id === menuItem.id ? { ...item, quantity: item.quantity + 1 } : item
+      );
+    } else {
+      updatedTableCart = [...currentTableCart, { ...menuItem, quantity: 1 }];
+    }
 
-      console.log('Cart after adding item:', cart);
-
-      return {
-        ...prevCart,
-        [tableId]: updatedTableCart,
-      };
-    });
-
-    console.log(`Item added to cart for table ${tableId}:`, menuItem);
-  };
+    return {
+      ...prevTables,
+      [tableId]: updatedTableCart,
+    };
+  });
+};
 
   return (
     <div style={styles.container}>
