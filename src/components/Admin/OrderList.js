@@ -8,6 +8,8 @@ import 'react-calendar/dist/Calendar.css';
 function OrderList() {
   const [orders, setOrders] = useState([]);
   const [selectedOrder, setSelectedOrder] = useState(null); // Untuk menyimpan pesanan yang dipilih
+  const [filterStatus, setFilterStatus] = useState(''); // Untuk Paid/Not Paid Yet
+  const [filterTable, setFilterTable] = useState(''); // Untuk Table Number
 
   const statsReducer = (state, action) => {
     switch (action.type) {
@@ -128,12 +130,20 @@ function OrderList() {
               quantity: detail.quantity, // Tambahkan kuantiti dari `orderDetails`
             };
           } else {
-            return { name: 'Unknown Item', quantity: detail.quantity };
+            return { name: 'Unknown Item', quantity: detail.quantity, category: 'Unknown' };
           }
         })
       );
 
-      setSelectedOrder({ ...order, items: orderDetails }); // Tetapkan `items` dengan maklumat penuh
+      // Pisahkan Dish dan Drink berdasarkan kategori
+      const dishes = orderDetails.filter((item) =>
+        ['Main Course', 'Side Dish', 'Dessert'].includes(item.category)
+      );
+      const drinks = orderDetails.filter((item) =>
+        ['Cold Drinks', 'Hot Drinks'].includes(item.category)
+      );
+
+      setSelectedOrder({ ...order, dishes, drinks }); // Tetapkan `dishes` dan `drinks`
     } catch (err) {
       console.error('Error fetching order details:', err);
     }
@@ -288,6 +298,22 @@ function OrderList() {
     }
   };
 
+  // Filter dan urutkan pesanan berdasarkan status pembayaran dan nombor meja
+  const filteredOrders = orders
+    .filter((order) => {
+      const matchesStatus =
+        filterStatus === ''
+          ? true
+          : filterStatus === 'Paid'
+          ? order.status === 'Completed'
+          : order.status !== 'Completed';
+
+      const matchesTable = filterTable === '' ? true : order.tableNumber === filterTable;
+
+      return matchesStatus && matchesTable;
+    })
+    .sort((a, b) => b.createdAt.toDate() - a.createdAt.toDate()); // Susun berdasarkan waktu terbaru
+
   return (
     <div style={styles.container}>
       <div style={styles.header}>
@@ -327,10 +353,43 @@ function OrderList() {
         </div>
       </div>
 
+      {/* Filter Pesanan */}
+      <div style={styles.filterContainer}>
+        <div style={styles.filterItem}>
+          <label htmlFor="filterStatus" style={styles.label}>Filter by Payment Status:</label>
+          <select
+            id="filterStatus"
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+            style={styles.select}
+          >
+            <option value="">All</option>
+            <option value="Paid">Paid</option>
+            <option value="Not Paid Yet">Not Paid Yet</option>
+          </select>
+        </div>
+        <div style={styles.filterItem}>
+          <label htmlFor="filterTable" style={styles.label}>Filter by Table Number:</label>
+          <select
+            id="filterTable"
+            value={filterTable}
+            onChange={(e) => setFilterTable(e.target.value)}
+            style={styles.select}
+          >
+            <option value="">All Tables</option>
+            {[...new Set(orders.map((order) => order.tableNumber))].map((table) => (
+              <option key={table} value={table}>
+                Table {table}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
       {/* Senarai Pesanan */}
       <div style={styles.orderListContainer}>
         <div style={styles.orderList}>
-          {orders.map((order, index) => (
+          {filteredOrders.map((order, index) => (
             <button
               key={order.id}
               style={styles.orderButton}
@@ -353,18 +412,37 @@ function OrderList() {
                 )}
               </div>
               <h4>Invoice: #{selectedOrder.id}</h4>
-              <div>
-                <p><strong>Dish:</strong></p>
-                {selectedOrder.items && selectedOrder.items.length > 0 ? (
-                  selectedOrder.items.map((item, index) => (
+
+              {/* Tampilkan Dish jika ada */}
+              {selectedOrder.dishes && selectedOrder.dishes.length > 0 && (
+                <div>
+                  <p><strong>Dish:</strong></p>
+                  {selectedOrder.dishes.map((item, index) => (
                     <p key={index}>
-                      {item.name} x {item.quantity} = RM {item.price * item.quantity}
+                      {item.name} x {item.quantity} = RM {(item.price * item.quantity).toFixed(2)}
                     </p>
-                  ))
-                ) : (
+                  ))}
+                </div>
+              )}
+
+              {/* Tampilkan Drink jika ada */}
+              {selectedOrder.drinks && selectedOrder.drinks.length > 0 && (
+                <div>
+                  <p><strong>Drink:</strong></p>
+                  {selectedOrder.drinks.map((item, index) => (
+                    <p key={index}>
+                      {item.name} x {item.quantity} = RM {(item.price * item.quantity).toFixed(2)}
+                    </p>
+                  ))}
+                </div>
+              )}
+
+              {/* Pesan jika tidak ada Dish atau Drink */}
+              {(!selectedOrder.dishes || selectedOrder.dishes.length === 0) &&
+                (!selectedOrder.drinks || selectedOrder.drinks.length === 0) && (
                   <p>No items found for this order.</p>
-                )}
-              </div>
+              )}
+
               <h4>Total: RM {selectedOrder.totalPrice || '0.00'}</h4>
               <button style={styles.editButton} onClick={handleEditOrder}>
                 Edit Order
@@ -520,6 +598,31 @@ const styles = {
     padding: '5px 10px',
     borderRadius: '5px',
     fontWeight: 'bold',
+  },
+  filterContainer: {
+    display: 'flex',
+    justifyContent: 'space-between', // Atur jarak antar filter
+    gap: '20px', // Jarak antar filter
+    marginBottom: '20px',
+    padding: '10px',
+    backgroundColor: '#fff',
+    borderRadius: '8px',
+    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+  },
+  filterItem: {
+    flex: 1, // Setiap filter mengambil ruang yang sama
+    display: 'flex',
+    flexDirection: 'column', // Atur label dan select secara vertikal
+  },
+  label: {
+    marginBottom: '5px',
+    fontWeight: 'bold',
+  },
+  select: {
+    padding: '10px',
+    borderRadius: '5px',
+    border: '1px solid #ccc',
+    width: '100%',
   },
 };
 
