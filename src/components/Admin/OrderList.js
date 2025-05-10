@@ -534,11 +534,13 @@ const styles = {
     gap: '20px',
   },
   orderList: {
-    flex:1,
+    flex: 1,
     backgroundColor: '#fff',
     padding: '10px',
     borderRadius: '8px',
     boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+    overflowY: 'auto', // Tambahkan scroll secara vertikal
+    maxHeight: '400px', // Tetapkan tinggi maksimum untuk daftar
   },
   orderButton: {
     display: 'block',

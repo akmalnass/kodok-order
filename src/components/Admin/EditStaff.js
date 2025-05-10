@@ -133,14 +133,16 @@ function EditStaff() {
 }
 
 const styles = {
-    container: {
-        padding: '20px',
-        backgroundColor: '#D3FEEA',
-        borderRadius: '8px',
-        boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
-        height: '100%', // Pastikan ia memenuhi ruang
-        overflow: 'auto', // Tambahkan scroll jika kandungan melebihi ruang
-        boxSizing: 'border-box', // Pastikan padding dimasukkan dalam ketinggian
+  container: {
+    padding: '20px',
+    backgroundColor: '#D3FEEA',
+    borderRadius: '8px',
+    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+    width: '50%', // Atur lebar box menjadi lebih kecil
+    margin: '50px auto', // Posisikan box di tengah secara horizontal dan tambahkan margin atas
+    height: 'auto', // Sesuaikan tinggi dengan konten
+    overflow: 'auto', // Tambahkan scroll jika konten terlalu panjang
+    boxSizing: 'border-box', // Pastikan padding dimasukkan dalam lebar dan tinggi
   },
   form: {
     display: 'flex',
