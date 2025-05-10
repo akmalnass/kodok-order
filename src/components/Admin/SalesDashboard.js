@@ -243,7 +243,7 @@ function SalesDashboard() {
       <div style={styles.statsContainer}>
         <div style={styles.statBox}>
           <p>Daily Sales</p>
-          <h4>RM {Number(dailySalesBox).toFixed(2)}</h4> {/* Gunakan dailySalesBox */}
+          <h4>RM {Number(dailySalesBox).toFixed(2)}</h4>
         </div>
         <div style={styles.statBox}>
           <p>Monthly Sales</p>
@@ -258,7 +258,7 @@ function SalesDashboard() {
         </div>
       </div>
 
-      {/* Graf Bulanan dan Harian */}
+      {/* Grafik */}
       <div style={styles.graphContainer}>
         {/* Bar Graph (Monthly Sales) */}
         <div style={styles.graphBox}>
@@ -268,7 +268,7 @@ function SalesDashboard() {
             <XAxis dataKey="month" />
             <YAxis />
             <Tooltip />
-            <Bar dataKey="sales" fill="#1e88e5" /> {/* Warna biru tua */}
+            <Bar dataKey="sales" fill="#1e88e5" />
           </BarChart>
         </div>
 
@@ -280,7 +280,7 @@ function SalesDashboard() {
             <XAxis dataKey="day" />
             <YAxis />
             <Tooltip />
-            <Line type="monotone" dataKey="sales" stroke="#43a047" /> {/* Warna hijau */}
+            <Line type="monotone" dataKey="sales" stroke="#43a047" />
           </LineChart>
         </div>
 
@@ -296,7 +296,6 @@ function SalesDashboard() {
               cy="50%"
               outerRadius={100}
               label
-              fill={(entry, index) => COLORS[index % COLORS.length]} // Warna berdasarkan indeks
             >
               {menuData.map((entry, index) => (
                 <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
@@ -320,6 +319,8 @@ const styles = {
     boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
     maxWidth: '1200px',
     margin: '0 auto',
+    height: '100vh', // Pastikan kontainer memenuhi tinggi layar
+    overflowY: 'auto', // Tambahkan scroll jika konten terlalu panjang
   },
   statsContainer: {
     display: 'flex',
@@ -336,23 +337,19 @@ const styles = {
     boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
   },
   graphContainer: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    gap: '20px',
+    display: 'grid',
+    gridTemplateColumns: 'repeat(3, 1fr)', // Tiga kolom di layar besar
+    gap: '20px', // Jarak antar grafik
     marginBottom: '20px',
   },
   graphBox: {
-    flex: 1,
     backgroundColor: '#fff',
     borderRadius: '8px',
     padding: '20px',
     boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
     textAlign: 'center',
-  },
-  chartContainer: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    gap: '20px',
+    width: '90%', // Grafik memenuhi lebar knotainer
+
   },
   '@media (max-width: 768px)': {
     container: {
@@ -382,6 +379,10 @@ const styles = {
     chartContainer: {
       flexDirection: 'column', // Atur grafik secara vertikal
       gap: '20px',
+    },
+    graphContainer: {
+      gridTemplateColumns: '1fr', // Satu kolom di layar kecil
+      gap: '20px', // Jarak antar grafik
     },
   },
 };

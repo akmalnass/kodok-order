@@ -220,78 +220,36 @@ function OrderList() {
     const db = getFirestore(app);
 
     try {
-      // Update status pesanan ke 'Completed'
+      // Update status pesanan ke 'Completed' di Firestore
       await updateDoc(doc(db, 'orders', selectedOrder.id), {
         status: 'Completed',
       });
 
-      // Update Sales Dashboard
-      const salesDocRef = doc(db, 'sales', 'dashboard');
-      const salesDoc = await getDoc(salesDocRef);
+      // Update statistik di Firestore
+      await updateSales(selectedOrder.totalPrice);
 
-      const today = new Date();
-      const currentDay = today.getDate().toString(); // Hari dalam bentuk string
-      const currentMonth = today.toLocaleString('default', { month: 'long' }); // Nama bulan
+      // Update state orders di UI
+      setOrders((prevOrders) =>
+        prevOrders.map((order) =>
+          order.id === selectedOrder.id ? { ...order, status: 'Completed' } : order
+        )
+      );
 
-      if (salesDoc.exists()) {
-        const salesData = salesDoc.data();
+      // Update statistik di UI
+      dispatch({
+        type: 'UPDATE_STATS',
+        payload: {
+          totalOrdersToday: stats.totalOrdersToday,
+          ongoingOrdersToday: stats.ongoingOrdersToday - 1, // Kurangi ongoing orders
+          completedOrdersToday: stats.completedOrdersToday + 1, // Tambahkan completed orders
+          totalMonthlyOrders: stats.totalMonthlyOrders + 1, // Tambahkan total monthly orders
+        },
+      });
 
-        // Update dailySales
-        let updatedDailySales = salesData.dailySales || [];
-        const existingDay = updatedDailySales.find((day) => day.day === currentDay);
-
-        if (existingDay) {
-          // Jika hari sudah ada, tambahkan total penjualan
-          updatedDailySales = updatedDailySales.map((day) =>
-            day.day === currentDay
-              ? { ...day, sales: day.sales + selectedOrder.totalPrice }
-              : day
-          );
-        } else {
-          // Jika hari baru, tambahkan ke array
-          updatedDailySales.push({ day: currentDay, sales: selectedOrder.totalPrice });
-        }
-
-        // Update monthlySales
-        let updatedMonthlySales = salesData.monthlySales || [];
-        const existingMonth = updatedMonthlySales.find((month) => month.month === currentMonth);
-
-        if (existingMonth) {
-          // Jika bulan sudah ada, tambahkan total penjualan
-          updatedMonthlySales = updatedMonthlySales.map((month) =>
-            month.month === currentMonth
-              ? { ...month, sales: month.sales + selectedOrder.totalPrice }
-              : month
-          );
-        } else {
-          // Jika bulan baru, tambahkan ke array
-          updatedMonthlySales.push({ month: currentMonth, sales: selectedOrder.totalPrice });
-        }
-
-        // Update totalMonthlyOrders
-        const updatedMonthlyTotalOrders = (salesData.monthlyTotalOrders || 0) + 1;
-
-        // Perbarui dokumen di Firestore
-        await updateDoc(salesDocRef, {
-          dailySales: updatedDailySales,
-          monthlySales: updatedMonthlySales,
-          monthlyTotalOrders: updatedMonthlyTotalOrders, // Tambahkan pembaruan ini
-        });
-
-        console.log('Daily and Monthly Sales Updated:', updatedDailySales, updatedMonthlySales);
-      } else {
-        // Jika dokumen sales belum ada, buat dokumen baru
-        await setDoc(salesDocRef, {
-          dailySales: [{ day: currentDay, sales: selectedOrder.totalPrice }],
-          monthlySales: [{ month: currentMonth, sales: selectedOrder.totalPrice }],
-          monthlyTotalOrders: 1, // Inisialisasi dengan 1
-        });
-
-        console.log('Daily and Monthly Sales Initialized');
-      }
+      // Reset selectedOrder setelah pembayaran berhasil
+      setSelectedOrder(null);
 
       alert('Payment confirmed and order marked as completed!');
-      setSelectedOrder(null); // Reset selected order
     } catch (err) {
       console.error('Error confirming payment:', err);
       alert('Failed to confirm payment. Please try again.');
