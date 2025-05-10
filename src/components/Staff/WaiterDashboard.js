@@ -3,6 +3,7 @@ import { getFirestore, collection, getDocs, addDoc, onSnapshot } from 'firebase/
 import app from '../../firebase';
 import Header from '../Shared/Header';
 import notificationSound from '../../assets/notification.mp3';
+import OrderList from './OrderList'; // Import OrderList component
 
 function WaiterDashboard() {
   const [menu, setMenu] = useState([]);
@@ -13,6 +14,7 @@ function WaiterDashboard() {
   const [selectedCategory, setSelectedCategory] = useState('All'); // Default ke 'All'
   const [notifications, setNotifications] = useState([]);
   const [isUserInteracted, setIsUserInteracted] = useState(false); // Tambahkan state ini
+  const [currentPage, setCurrentPage] = useState('dashboard'); // 'dashboard' atau 'orderList'
 
   useEffect(() => {
     const db = getFirestore(app);
@@ -194,9 +196,18 @@ function WaiterDashboard() {
     createdAt: new Date(),
   });
 
+  if (currentPage === 'orderList') {
+    return <OrderList navigateToDashboard={() => setCurrentPage('dashboard')} />;
+  }
+
   return (
     <div style={styles.container}>
       <Header title="Waiter Dashboard" notifications={notifications} />
+      <div style={styles.navigation}>
+        <button style={styles.navButton} onClick={() => setCurrentPage('orderList')}>
+          Order List
+        </button>
+      </div>
       <div style={styles.form}>
         <label htmlFor="tableNumber" style={styles.label}>
           Table Number:
@@ -458,6 +469,19 @@ const styles = {
   notificationTime: {
     fontSize: '12px',
     color: '#888',
+  },
+  navigation: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    marginBottom: '20px',
+  },
+  navButton: {
+    padding: '10px 20px',
+    backgroundColor: '#007BFF',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '5px',
+    cursor: 'pointer',
   },
 };
 
