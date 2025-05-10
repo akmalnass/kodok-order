@@ -147,6 +147,7 @@ function KitchenDashboard() {
 
         // Jika ada notifikasi baru, mainkan suara
         if (kitchenNotifications.length > prevNotificationCount && isUserInteracted) {
+          console.log('New notification received:', kitchenNotifications[kitchenNotifications.length - 1]);
           console.log('Playing notification sound...');
           const audio = new Audio(notificationSound);
           audio.preload = 'auto';

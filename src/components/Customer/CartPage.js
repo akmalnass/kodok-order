@@ -42,6 +42,18 @@ function CartPage({ cart, setCart }) {
         totalPrice: formattedOrderDetails.reduce((total, item) => total + item.totalPrice, 0),
       });
 
+      // Tambahkan notifikasi untuk Kitchen
+      await addDoc(collection(db, 'notifications'), {
+        message: `New order submitted by Customer for Table ${tableNumber}`,
+        time: new Date(),
+        role: 'Kitchen',
+        isRead: false,
+      }).then(() => {
+        console.log('Notification for Kitchen created successfully.');
+      }).catch((err) => {
+        console.error('Error creating notification for Kitchen:', err);
+      });
+
       // Reset cart untuk tabel ini
       setCart((prevCart) => ({
         ...prevCart,
