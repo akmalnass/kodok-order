@@ -6,6 +6,7 @@ import { format } from 'date-fns';
 function OrderList({ navigateToDashboard }) {
   const [orders, setOrders] = useState([]);
   const [selectedTable, setSelectedTable] = useState('');
+  const [selectedStatus, setSelectedStatus] = useState('');
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -19,17 +20,8 @@ function OrderList({ navigateToDashboard }) {
           createdAt: doc.data().createdAt?.toDate() || new Date(), // Konversi Firestore Timestamp ke JavaScript Date
         }));
 
-        // Susun berdasarkan Status dan Timestamp
-        fetchedOrders.sort((a, b) => {
-          const statusOrder = ['Pending', 'Preparing', 'Completed'];
-          const statusComparison = statusOrder.indexOf(a.status) - statusOrder.indexOf(b.status);
-
-          if (statusComparison === 0) {
-            return b.createdAt - a.createdAt; // Urutkan descending berdasarkan waktu
-          }
-
-          return statusComparison;
-        });
+        // Susun berdasarkan waktu terbaru
+        fetchedOrders.sort((a, b) => b.createdAt - a.createdAt);
 
         setOrders(fetchedOrders);
       } catch (err) {
@@ -50,13 +42,12 @@ function OrderList({ navigateToDashboard }) {
     );
   };
 
-  const filteredOrders = selectedTable
-    ? orders.filter(
-        (order) =>
-          order.tableNumber === selectedTable &&
-          isToday(new Date(order.createdAt))
-      )
-    : orders.filter((order) => isToday(new Date(order.createdAt)));
+  const filteredOrders = orders.filter((order) => {
+    const matchesTable = selectedTable ? order.tableNumber === selectedTable : true;
+    const matchesStatus = selectedStatus ? order.status === selectedStatus : true;
+    const isTodayOrder = isToday(new Date(order.createdAt));
+    return matchesTable && matchesStatus && isTodayOrder;
+  });
 
   return (
     <div style={styles.container}>
@@ -80,6 +71,22 @@ function OrderList({ navigateToDashboard }) {
               Table {table}
             </option>
           ))}
+        </select>
+      </div>
+      <div style={styles.filterSection}>
+        <label htmlFor="status" style={styles.label}>
+          Filter by Status:
+        </label>
+        <select
+          id="status"
+          value={selectedStatus}
+          onChange={(e) => setSelectedStatus(e.target.value)}
+          style={styles.select}
+        >
+          <option value="">All Status</option>
+          <option value="Pending">Pending</option>
+          <option value="Preparing">Preparing</option>
+          <option value="Completed">Completed</option>
         </select>
       </div>
       {error && <p style={styles.error}>{error}</p>}

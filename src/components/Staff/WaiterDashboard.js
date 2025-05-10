@@ -15,6 +15,7 @@ function WaiterDashboard() {
   const [notifications, setNotifications] = useState([]);
   const [isUserInteracted, setIsUserInteracted] = useState(false); // Tambahkan state ini
   const [currentPage, setCurrentPage] = useState('dashboard'); // 'dashboard' atau 'orderList'
+  const [prevNotificationCount, setPrevNotificationCount] = useState(0);
 
   useEffect(() => {
     const db = getFirestore(app);
@@ -50,18 +51,26 @@ function WaiterDashboard() {
           };
         }).filter((notif) => notif.role === 'Waiter'); // Hanya untuk Waiter
 
+        // Debugging notifikasi
+        console.log('Waiter Notifications:', waiterNotifications);
+
         // Jika ada notifikasi baru, mainkan suara
-        if (waiterNotifications.length > notifications.length && isUserInteracted) {
+        if (waiterNotifications.length > prevNotificationCount && isUserInteracted) {
+          console.log('Playing notification sound...');
           const audio = new Audio(notificationSound);
           audio.play().catch((err) => console.error('Audio play failed:', err));
         }
 
+        // Perbarui jumlah notifikasi sebelumnya
+        setPrevNotificationCount(waiterNotifications.length);
+
+        // Perbarui state notifikasi
         setNotifications(waiterNotifications);
       }
     );
 
     return () => unsubscribe();
-  }, [notifications, isUserInteracted]);
+  }, [prevNotificationCount, isUserInteracted]);
 
   useEffect(() => {
     const handleUserInteraction = () => {
@@ -195,6 +204,8 @@ function WaiterDashboard() {
     status: 'Pending',
     createdAt: new Date(),
   });
+  console.log('Previous Notification Count:', prevNotificationCount);
+  console.log('Current Notification Count:', notifications.length);
 
   if (currentPage === 'orderList') {
     return <OrderList navigateToDashboard={() => setCurrentPage('dashboard')} />;

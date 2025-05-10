@@ -10,6 +10,7 @@ function KitchenDashboard() {
   const [error, setError] = useState('');
   const [notifications, setNotifications] = useState([]);
   const [isUserInteracted, setIsUserInteracted] = useState(false);
+  const [prevNotificationCount, setPrevNotificationCount] = useState(0);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -78,6 +79,61 @@ function KitchenDashboard() {
   useEffect(() => {
     const db = getFirestore(app);
     const unsubscribe = onSnapshot(
+      query(collection(db, 'orders'), where('status', 'in', ['Pending', 'Preparing'])),
+      async (snapshot) => {
+        const fetchedOrders = [];
+        for (const orderDoc of snapshot.docs) {
+          const orderData = orderDoc.data();
+
+          // Validasi orderDetails
+          if (!Array.isArray(orderData.orderDetails)) {
+            console.error(`Invalid orderDetails for order ID: ${orderDoc.id}`, orderData.orderDetails);
+            continue;
+          }
+
+          // Proses orderDetails
+          const orderDetails = await Promise.all(
+            orderData.orderDetails.map(async (detail) => {
+              if (!detail.menuItemId) {
+                console.warn('Invalid menuItemId in orderDetails:', detail);
+                return { name: 'Unknown Item', quantity: detail.quantity };
+              }
+
+              const menuDoc = await getDoc(doc(db, 'menu', detail.menuItemId));
+              if (!menuDoc.exists()) {
+                console.warn('Menu item not found for ID:', detail.menuItemId);
+                return { name: 'Unknown Item', quantity: detail.quantity };
+              }
+
+              return {
+                ...menuDoc.data(),
+                quantity: detail.quantity,
+              };
+            })
+          );
+
+          fetchedOrders.push({
+            id: orderDoc.id,
+            tableNumber: orderData.tableNumber,
+            status: orderData.status,
+            createdAt: orderData.createdAt?.toDate() || new Date(), // Konversi Firestore Timestamp ke Date
+            orderDetails,
+          });
+        }
+
+        // Urutkan berdasarkan waktu (terawal di atas)
+        fetchedOrders.sort((a, b) => a.createdAt - b.createdAt);
+
+        setOrders(fetchedOrders);
+      }
+    );
+
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    const db = getFirestore(app);
+    const unsubscribe = onSnapshot(
       collection(db, 'notifications'),
       (snapshot) => {
         const kitchenNotifications = snapshot.docs.map((doc) => {
@@ -90,17 +146,23 @@ function KitchenDashboard() {
         }).filter((notif) => notif.role === 'Kitchen'); // Hanya untuk Kitchen
 
         // Jika ada notifikasi baru, mainkan suara
-        if (kitchenNotifications.length > notifications.length && isUserInteracted) {
+        if (kitchenNotifications.length > prevNotificationCount && isUserInteracted) {
+          console.log('Playing notification sound...');
           const audio = new Audio(notificationSound);
+          audio.preload = 'auto';
           audio.play().catch((err) => console.error('Audio play failed:', err));
         }
 
+        // Perbarui jumlah notifikasi sebelumnya
+        setPrevNotificationCount(kitchenNotifications.length);
+
+        // Perbarui state notifikasi
         setNotifications(kitchenNotifications);
       }
     );
 
     return () => unsubscribe();
-  }, [notifications, isUserInteracted]);
+  }, [prevNotificationCount, isUserInteracted]);
 
   const handleMarkAsReady = async (orderId, tableNumber) => {
     const db = getFirestore(app);
@@ -184,6 +246,7 @@ function KitchenDashboard() {
           orders.map((order) => (
             <li key={order.id} style={styles.orderItem}>
               <p><strong>Table Number:</strong> {order.tableNumber}</p>
+              <p><strong>Order Time:</strong> {order.createdAt.toLocaleString()}</p>
               <p><strong>Status:</strong> {order.status}</p>
               <p><strong>Order Details:</strong></p>
               <ul>
