@@ -108,18 +108,19 @@ const styles = {
     backgroundColor: '#D3FEEA',
   },
   sidebar: {
-    position: 'fixed', // Tetap di sisi kiri layar
-    top: 0, // Mulai dari atas
-    left: 0, // Mulai dari kiri
-    width: '250px', // Tetapkan lebar sidebar
-    height: '100vh', // Isi seluruh tinggi viewport
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    width: '250px',
+    height: '100vh',
     backgroundColor: '#0B8B4B',
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
     padding: '20px',
     boxShadow: '14px 4px 30px rgba(0, 0, 0, 0.25)',
-    overflowY: 'auto', // Tambahkan scroll jika konten terlalu panjang
+    overflowY: 'auto',
+    zIndex: 1000,
   },
   logoContainer: {
     display: 'flex',
@@ -170,11 +171,25 @@ const styles = {
   },
   mainContent: {
     flex: 1,
-    marginLeft: '250px', // Beri ruang untuk sidebar
+    marginLeft: '250px',
     padding: '20px',
     display: 'flex',
     flexDirection: 'column',
-    overflowX: 'hidden', // Hindari scroll horizontal
+    overflowX: 'hidden',
+  },
+  '@media (max-width: 768px)': {
+    sidebar: {
+      position: 'relative',
+      width: '100%',
+      height: 'auto',
+      flexDirection: 'row',
+      justifyContent: 'space-around',
+      padding: '10px',
+    },
+    mainContent: {
+      marginLeft: '0',
+      padding: '10px',
+    },
   },
 };
 

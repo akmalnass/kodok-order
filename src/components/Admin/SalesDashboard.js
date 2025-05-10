@@ -312,8 +312,10 @@ function SalesDashboard() {
 
 const styles = {
   container: {
+    display: 'flex',
+    flexDirection: 'column',
     padding: '20px',
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#D3FEEA',
     borderRadius: '8px',
     boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
     maxWidth: '1200px',
@@ -346,6 +348,41 @@ const styles = {
     padding: '20px',
     boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
     textAlign: 'center',
+  },
+  chartContainer: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    gap: '20px',
+  },
+  '@media (max-width: 768px)': {
+    container: {
+      padding: '10px',
+      width: '100%',
+    },
+    sidebar: {
+      position: 'relative', // Ubah sidebar menjadi relatif
+      width: '100%', // Sidebar memenuhi lebar layar
+      height: 'auto', // Tinggi menyesuaikan konten
+      flexDirection: 'row', // Atur menu secara horizontal
+      justifyContent: 'space-around', // Sebar menu secara merata
+      padding: '10px',
+    },
+    mainContent: {
+      marginLeft: '0', // Hilangkan margin kiri
+      padding: '10px',
+    },
+    statsContainer: {
+      flexDirection: 'column', // Atur statistik secara vertikal
+      gap: '10px',
+    },
+    statBox: {
+      margin: '0', // Hilangkan margin horizontal
+      width: '100%', // Setiap box memenuhi lebar layar
+    },
+    chartContainer: {
+      flexDirection: 'column', // Atur grafik secara vertikal
+      gap: '20px',
+    },
   },
 };
 

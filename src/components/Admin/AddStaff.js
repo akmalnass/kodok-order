@@ -96,11 +96,10 @@ const styles = {
     backgroundColor: '#D3FEEA',
     borderRadius: '8px',
     boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
-    height: '100%', // Pastikan ia memenuhi ruang
-    width: '60%',
-    marginLeft: '0px',
-    overflow: 'auto', // Tambahkan scroll jika kandungan melebihi ruang
-    boxSizing: 'border-box', // Pastikan padding dimasukkan dalam ketinggian
+    width: '50%', // Lebar box lebih kecil
+    margin: '50px auto', // Posisikan di tengah secara horizontal dan tambahkan margin atas
+    height: 'auto', // Tinggi menyesuaikan konten
+    boxSizing: 'border-box', // Pastikan padding dimasukkan dalam lebar dan tinggi
   },
   form: {
     display: 'flex',
