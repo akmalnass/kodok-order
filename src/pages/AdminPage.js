@@ -124,19 +124,20 @@ const styles = {
   logoContainer: {
     display: 'flex',
     alignItems: 'center',
-    marginBottom: '20px',
+    marginBottom: '70px',
   },
   logo: {
-    width: '130px',
-    height: '130px',
+    width: '100px',
+    height: '100px',
     backgroundColor: 'transparent',
     borderRadius: '0',
   },
   logoText: {
     fontSize: '24px',
-    fontWeight: '400',
+    fontWeight: '700', // Bold
+    fontFamily: 'Arial, sans-serif', // Font rapi
     color: 'black',
-    marginLeft: '-20px',
+    marginLeft: '10px',
   },
   menuItem: {
     width: '100%',
