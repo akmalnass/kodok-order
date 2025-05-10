@@ -194,8 +194,8 @@ const styles = {
     color: '#000', // Warna teks untuk halaman aktif
   },
   logoutButton: {
-    position: 'absolute', // Letakkan di bahagian bawah
-    bottom: '50px', // Jarak dari bawah
+    position: 'absolute', // Tetap di bagian bawah sidebar
+    bottom: '100px', // Kurangi jarak dari bawah (sebelumnya 50px)
     width: 'calc(100% - 40px)', // Sesuaikan lebar dengan padding sidebar
     padding: '15px',
     textAlign: 'center',
