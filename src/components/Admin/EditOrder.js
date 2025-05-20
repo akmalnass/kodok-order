@@ -111,14 +111,6 @@ function EditOrder() {
     }
   };
 
-  const handleEditOrder = () => {
-    setIsEditing(true); // Aktifkan mod pengeditan
-  };
-
-  if (!order) {
-    return <p>Loading...</p>;
-  }
-
   return (
     <div style={styles.container}>
       <h3 style={styles.title}>Edit Order</h3>
