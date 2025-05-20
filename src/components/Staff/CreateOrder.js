@@ -8,7 +8,7 @@ function CreateOrder({ role }) {
   const [newOrder, setNewOrder] = useState([]);
   const [tableNumber, setTableNumber] = useState('');
   const [error, setError] = useState('');
-  const [tables] = useState([1, 2, 3, 4, 5]); // Senarai meja
+  const [tables] = useState([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]); // Senarai meja
   const [selectedCategory, setSelectedCategory] = useState('All'); // Default ke 'All'
   const navigate = useNavigate();
 
@@ -83,24 +83,25 @@ function CreateOrder({ role }) {
     try {
       await addDoc(collection(db, 'orders'), {
         tableNumber,
-        status: role === 'admin' ? 'Approved' : 'Pending',
+        status: 'Preparing', // Tukar ke Preparing
         orderDetails,
         totalPrice: totalOrderPrice,
         createdAt: Timestamp.now(),
       });
-
+      // Hantar notifikasi ke Kitchen
+      await addDoc(collection(db, 'notifications'), {
+        message: `New order for Table ${tableNumber} submitted by Admin`,
+        time: new Date(),
+        role: 'Kitchen',
+        isRead: false,
+      });
       alert('Order created successfully!');
       setNewOrder([]);
       setTableNumber('');
       setMenu((prevMenu) =>
         prevMenu.map((item) => ({ ...item, quantity: 0 }))
       );
-
-      if (role === 'admin') {
-        navigate('/admin/order-list');
-      } else {
-        navigate('/staff/order-list');
-      }
+      navigate('/admin/order-list');
     } catch (err) {
       console.error('Error creating order:', err);
       setError('Failed to create order. Please try again.');

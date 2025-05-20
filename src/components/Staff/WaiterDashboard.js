@@ -158,7 +158,7 @@ function WaiterDashboard() {
         tableNumber,
         orderDetails: formattedOrderDetails, // Gunakan formattedOrderDetails
         totalPrice: totalOrderPrice, // Tambahkan total harga untuk seluruh pesanan
-        status: 'Pending',
+        status: 'Preparing',
         createdAt: new Date(),
       });
 

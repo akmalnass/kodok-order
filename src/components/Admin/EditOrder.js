@@ -1,28 +1,99 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom'; // Gabungkan import useNavigate dan useParams
-import { getFirestore, doc, getDoc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { getFirestore, doc, getDoc, updateDoc, deleteDoc, addDoc, collection, getDocs, collection as fbCollection } from 'firebase/firestore';
 import app from '../../firebase';
 
 function EditOrder() {
   const { id } = useParams(); // Ambil ID pesanan dari URL
   const navigate = useNavigate();
   const [order, setOrder] = useState(null); // Simpan data pesanan
+  const [menu, setMenu] = useState([]); // Untuk simpan semua menu
   const [isEditing, setIsEditing] = useState(false); // Kawal mod pengeditan
 
   useEffect(() => {
-    const fetchOrder = async () => {
+    const fetchOrderAndMenu = async () => {
       const db = getFirestore(app);
+      // Fetch menu
+      const menuSnapshot = await getDocs(fbCollection(db, 'menu'));
+      const menuList = menuSnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      setMenu(menuList);
+      // Fetch order
       const orderDoc = await getDoc(doc(db, 'orders', id));
       if (orderDoc.exists()) {
-        setOrder(orderDoc.data());
+        const orderData = orderDoc.data();
+        // Gabungkan menu dengan orderDetails (jika tiada dalam orderDetails, quantity=0)
+        const mergedOrderDetails = menuList.map((menuItem) => {
+          const found = (orderData.orderDetails || []).find((od) => od.menuItemId === menuItem.id);
+          return found
+            ? { ...found, name: menuItem.name, price: menuItem.price }
+            : { menuItemId: menuItem.id, name: menuItem.name, price: menuItem.price, quantity: 0 };
+        });
+        setOrder({ ...orderData, orderDetails: mergedOrderDetails });
       } else {
         alert('Order not found!');
-        navigate('/admin/order-list'); // Kembali ke halaman Order jika pesanan tidak wujud
+        navigate('/admin/order-list');
       }
     };
-
-    fetchOrder();
+    fetchOrderAndMenu();
   }, [id, navigate]);
+
+  // Tambah fungsi tambah/tolak kuantiti item
+  const handleQuantityChange = (index, increment) => {
+    setOrder((prevOrder) => {
+      const updatedOrderDetails = prevOrder.orderDetails.map((item, idx) =>
+        idx === index
+          ? { ...item, quantity: Math.max(0, item.quantity + increment) }
+          : item
+      );
+      return { ...prevOrder, orderDetails: updatedOrderDetails };
+    });
+  };
+
+  // Fungsi untuk update order ke Firestore dan trigger notifikasi
+  const handleSaveEdit = async () => {
+    const db = getFirestore(app);
+    try {
+      // Cari perubahan kuantiti (tambah/tolak sahaja)
+      const originalOrderDoc = await getDoc(doc(db, 'orders', id));
+      const originalOrder = originalOrderDoc.exists() ? originalOrderDoc.data() : null;
+      const originalDetails = (originalOrder?.orderDetails || []);
+      // Hanya simpan orderDetails yang quantity > 0
+      const filteredOrderDetails = order.orderDetails.filter(item => item.quantity > 0);
+      const changes = filteredOrderDetails.filter((item) => {
+        const ori = originalDetails.find((od) => od.menuItemId === item.menuItemId);
+        return (ori ? ori.quantity !== item.quantity : item.quantity > 0);
+      });
+      await updateDoc(doc(db, 'orders', id), {
+        ...order,
+        orderDetails: filteredOrderDetails,
+      });
+      // Hantar notifikasi ke Kitchen & Waiter hanya jika ada perubahan
+      if (changes.length > 0) {
+        const changeList = changes.map(item => `${item.name} x ${item.quantity}`).join(', ');
+        const notifMsg = `Order for Table ${order.tableNumber} updated: ${changeList}`;
+        await addDoc(collection(db, 'notifications'), {
+          message: notifMsg,
+          time: new Date(),
+          role: 'Kitchen',
+          isRead: false,
+        });
+        await addDoc(collection(db, 'notifications'), {
+          message: notifMsg,
+          time: new Date(),
+          role: 'Waiter',
+          isRead: false,
+        });
+      }
+      alert('Order updated and sent to Kitchen & Waiter!');
+      setIsEditing(false);
+    } catch (error) {
+      console.error('Error updating order:', error);
+      alert('Failed to update order.');
+    }
+  };
 
   const handleCancel = () => {
     navigate('/admin/order-list'); // Kembali ke halaman Order
@@ -40,38 +111,8 @@ function EditOrder() {
     }
   };
 
-  const handleCompleteOrder = async () => {
-    const db = getFirestore(app);
-    try {
-      await updateDoc(doc(db, 'orders', id), { status: 'Completed' });
-      alert('Order marked as completed!');
-      navigate('/admin/order-list'); // Kembali ke halaman Order selepas selesai
-    } catch (error) {
-      console.error('Error completing order:', error);
-      alert('Failed to complete order.');
-    }
-  };
-
   const handleEditOrder = () => {
     setIsEditing(true); // Aktifkan mod pengeditan
-  };
-
-  const handleSaveEdit = async () => {
-    const db = getFirestore(app);
-    try {
-      await updateDoc(doc(db, 'orders', id), order); // Simpan perubahan ke Firestore
-      alert('Order updated successfully!');
-      setIsEditing(false); // Matikan mod pengeditan
-    } catch (error) {
-      console.error('Error updating order:', error);
-      alert('Failed to update order.');
-    }
-  };
-
-  const handleChangeItem = (index, field, value) => {
-    const updatedItems = [...order.items];
-    updatedItems[index][field] = value;
-    setOrder({ ...order, items: updatedItems });
   };
 
   if (!order) {
@@ -83,80 +124,37 @@ function EditOrder() {
       <h3 style={styles.title}>Edit Order</h3>
       <div style={styles.invoiceDetails}>
         <p><strong>Invoice:</strong> #{id}</p>
-        <p>
-          <strong>Table:</strong>{' '}
-          {isEditing ? (
-            <input
-              type="text"
-              value={order.tableNumber}
-              onChange={(e) => setOrder({ ...order, tableNumber: e.target.value })}
-              style={styles.input}
-            />
-          ) : (
-            order.tableNumber || 'N/A'
-          )}
-        </p>
+        <p><strong>Table:</strong> {order?.tableNumber || 'N/A'}</p>
       </div>
-      <div style={styles.orderDetails}>
-        <h4>#{order.id} Order</h4>
-        <div style={styles.items}>
-          {order.items && order.items.length > 0 ? ( // Pastikan order.items wujud dan tidak kosong
-            order.items.map((item, index) => (
+      <div style={styles.orderDetailsBox}>
+        <h4># Order</h4>
+        <div style={styles.itemsBox}>
+          {order && order.orderDetails && order.orderDetails.length > 0 ? (
+            order.orderDetails.map((item, index) => (
               <div key={index} style={styles.itemRow}>
-                <p>{item.name}</p>
-                {isEditing ? (
-                  <>
-                    <input
-                      type="number"
-                      value={item.quantity}
-                      onChange={(e) => handleChangeItem(index, 'quantity', e.target.value)}
-                      style={styles.input}
-                    />
-                    <input
-                      type="number"
-                      value={item.price}
-                      onChange={(e) => handleChangeItem(index, 'price', e.target.value)}
-                      style={styles.input}
-                    />
-                  </>
-                ) : (
-                  <>
-                    <p>x {item.quantity}</p>
-                    <p>RM {item.price}</p>
-                  </>
-                )}
+                <span>{item.name}</span>
+                <div style={styles.qtyBox}>
+                  <button style={styles.qtyBtn} onClick={() => handleQuantityChange(index, -1)} disabled={item.quantity <= 0}>-</button>
+                  <span style={styles.qtyNum}>{item.quantity}</span>
+                  <button style={styles.qtyBtn} onClick={() => handleQuantityChange(index, 1)}>+</button>
+                </div>
+                <span>RM {item.price}</span>
               </div>
             ))
           ) : (
-            <p>No items found in this order.</p> // Paparkan mesej jika tiada item
+            <p>No items found in this order.</p>
           )}
         </div>
-        <h4>
-          Total: RM{' '}
-          {order.items && order.items.length > 0
-            ? order.items.reduce((total, item) => total + item.quantity * item.price, 0)
-            : 0}
-        </h4>
+        <h4>Total: RM {order && order.orderDetails ? order.orderDetails.filter(i=>i.quantity>0).reduce((total, item) => total + item.quantity * item.price, 0) : 0}</h4>
       </div>
       <div style={styles.actionButtons}>
-        <button style={styles.cancelButton} onClick={handleCancel}>
-          Cancel
-        </button>
-        <button style={styles.removeButton} onClick={handleRemoveOrder}>
-          Remove Order
-        </button>
+        <button style={styles.cancelButton} onClick={handleCancel}>Cancel</button>
+        <button style={styles.removeButton} onClick={handleRemoveOrder}>Remove Order</button>
         {isEditing ? (
-          <button style={styles.saveButton} onClick={handleSaveEdit}>
-            Save Changes
-          </button>
+          <button style={styles.saveButton} onClick={handleSaveEdit}>Save Changes</button>
         ) : (
-          <button style={styles.editButton} onClick={handleEditOrder}>
-            Edit Order
-          </button>
+          <button style={styles.editButton} onClick={() => setIsEditing(true)}>Edit Order</button>
         )}
-        <button style={styles.completeButton} onClick={handleCompleteOrder}>
-          Complete Order
-        </button>
       </div>
     </div>
   );
@@ -179,26 +177,52 @@ const styles = {
   invoiceDetails: {
     marginBottom: '20px',
   },
-  orderDetails: {
+  orderDetailsBox: {
     backgroundColor: '#fff',
     padding: '20px',
     borderRadius: '8px',
-    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
     marginBottom: '20px',
   },
-  items: {
+  itemsBox: {
     marginBottom: '20px',
   },
   itemRow: {
     display: 'flex',
+    alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: '10px',
+    gap: '10px',
+    minHeight: '48px',
   },
-  input: {
-    width: '60px',
-    padding: '5px',
-    borderRadius: '5px',
-    border: '1px solid #ddd',
+  qtyBox: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    justifyContent: 'center',
+    minWidth: '120px',
+    width: '120px', // Tambah width tetap supaya semua qtyBox selari
+  },
+  qtyBtn: {
+    padding: '4px 10px',
+    fontSize: '18px',
+    backgroundColor: '#007BFF',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '4px',
+    cursor: 'pointer',
+    minWidth: '32px',
+    minHeight: '32px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  qtyNum: {
+    minWidth: '32px',
+    textAlign: 'center',
+    fontWeight: 'bold',
+    fontSize: '18px',
+    display: 'inline-block',
   },
   actionButtons: {
     display: 'flex',
@@ -229,14 +253,6 @@ const styles = {
     cursor: 'pointer',
   },
   saveButton: {
-    padding: '10px 20px',
-    backgroundColor: '#00D16A',
-    color: '#fff',
-    border: 'none',
-    borderRadius: '5px',
-    cursor: 'pointer',
-  },
-  completeButton: {
     padding: '10px 20px',
     backgroundColor: '#00D16A',
     color: '#fff',

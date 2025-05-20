@@ -35,7 +35,7 @@ function CartPage({ cart, setCart }) {
       await addDoc(collection(db, 'orders'), {
         tableNumber,
         orderDetails: formattedOrderDetails, // Gunakan data yang diformat
-        status: 'Pending',
+        status: 'Preparing',
         createdAt: new Date(),
         totalPrice: formattedOrderDetails.reduce((total, item) => total + item.totalPrice, 0),
       });
