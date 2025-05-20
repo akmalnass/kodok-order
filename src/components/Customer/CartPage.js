@@ -6,8 +6,6 @@ import app from '../../firebase';
 function CartPage({ cart, setCart }) {
   const { tableId } = useParams(); // Ambil tableId dari URL
   const navigate = useNavigate();
-
-  // Ekstrak table number dari "table-1" format
   const tableNumber = tableId.split('-')[1];
   const tableCart = cart[tableNumber] || []; // Gunakan tableNumber, bukan tableId
 
@@ -33,7 +31,7 @@ function CartPage({ cart, setCart }) {
         totalPrice: item.price * item.quantity, // Total harga untuk item ini
       }));
 
-      // Simpan pesanan ke Firestore
+      // Simpan pesanan ke Firestore (tanpa orderType)
       await addDoc(collection(db, 'orders'), {
         tableNumber,
         orderDetails: formattedOrderDetails, // Gunakan data yang diformat

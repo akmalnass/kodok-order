@@ -88,14 +88,22 @@ export const resetSales = async () => {
     const salesDoc = await getDoc(salesDocRef);
 
     if (salesDoc.exists()) {
-      console.log('Resetting Daily Sales:', salesDoc.data()); // Debug log
-
-      // Reset Daily Sales
+      // Instead of clearing all dailySales, only reset today's sales to 0
+      const data = salesDoc.data();
+      const today = new Date();
+      const currentDay = today.getDate().toString();
+      let updatedDailySales = Array.isArray(data.dailySales) ? [...data.dailySales] : [];
+      updatedDailySales = updatedDailySales.map(day =>
+        day.day === currentDay ? { ...day, sales: 0 } : day
+      );
+      // If today is not in the array, add it as 0
+      if (!updatedDailySales.find(day => day.day === currentDay)) {
+        updatedDailySales.push({ day: currentDay, sales: 0 });
+      }
       await updateDoc(salesDocRef, {
-        dailySales: [], // Reset ke array kosong
+        dailySales: updatedDailySales,
       });
-
-      console.log('Daily Sales Reset Successfully'); // Debug log
+      console.log('Only today\'s sales reset to 0, previous days preserved');
     } else {
       console.error('Sales document does not exist!');
     }

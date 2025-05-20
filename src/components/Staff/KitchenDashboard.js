@@ -3,14 +3,14 @@ import { getFirestore, collection, query, where, getDocs, updateDoc, doc, getDoc
 import app from '../../firebase';
 import { useNavigate } from 'react-router-dom';
 import Header from '../Shared/Header';
-import notificationSound from '../../assets/notification.mp3';
+import notificationSoundManager from '../Shared/NotificationSoundManager';
 
 function KitchenDashboard() {
   const [orders, setOrders] = useState([]);
   const [error, setError] = useState('');
   const [notifications, setNotifications] = useState([]);
-  const [isUserInteracted, setIsUserInteracted] = useState(false);
   const [prevNotificationCount, setPrevNotificationCount] = useState(0);
+  const [showEnableSound, setShowEnableSound] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -132,6 +132,16 @@ function KitchenDashboard() {
   }, []);
 
   useEffect(() => {
+    // Show enable sound prompt if not unlocked
+    setShowEnableSound(!notificationSoundManager.isUnlocked);
+  }, []);
+
+  const handleEnableSound = () => {
+    notificationSoundManager.unlock();
+    setShowEnableSound(false);
+  };
+
+  useEffect(() => {
     const db = getFirestore(app);
     const unsubscribe = onSnapshot(
       collection(db, 'notifications'),
@@ -143,27 +153,17 @@ function KitchenDashboard() {
             ...data,
             time: data.time.toDate().toLocaleString(),
           };
-        }).filter((notif) => notif.role === 'Kitchen'); // Hanya untuk Kitchen
+        }).filter((notif) => notif.role === 'Kitchen' || notif.role === 'Customer'); // Kitchen & Customer
 
-        // Jika ada notifikasi baru, mainkan suara
-        if (kitchenNotifications.length > prevNotificationCount && isUserInteracted) {
-          console.log('New notification received:', kitchenNotifications[kitchenNotifications.length - 1]);
-          console.log('Playing notification sound...');
-          const audio = new Audio(notificationSound);
-          audio.preload = 'auto';
-          audio.play().catch((err) => console.error('Audio play failed:', err));
+        if (kitchenNotifications.length > prevNotificationCount && notificationSoundManager.isUnlocked) {
+          notificationSoundManager.play();
         }
-
-        // Perbarui jumlah notifikasi sebelumnya
         setPrevNotificationCount(kitchenNotifications.length);
-
-        // Perbarui state notifikasi
         setNotifications(kitchenNotifications);
       }
     );
-
     return () => unsubscribe();
-  }, [prevNotificationCount, isUserInteracted]);
+  }, [prevNotificationCount]);
 
   const handleMarkAsReady = async (orderId, tableNumber) => {
     const db = getFirestore(app);
@@ -220,21 +220,19 @@ function KitchenDashboard() {
     }
   };
 
-  useEffect(() => {
-    const handleUserInteraction = () => {
-      setIsUserInteracted(true);
-      window.removeEventListener('click', handleUserInteraction);
-    };
-
-    window.addEventListener('click', handleUserInteraction);
-
-    return () => {
-      window.removeEventListener('click', handleUserInteraction);
-    };
-  }, []);
-
   return (
     <div style={styles.container}>
+      {showEnableSound && (
+        <div style={{position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.5)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
+          <div style={{background: 'white', padding: 32, borderRadius: 12, textAlign: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.2)'}}>
+            <h2>Enable Notification Sound</h2>
+            <p>Tap the button below to enable real-time notification sound for the kitchen.</p>
+            <button style={{padding: '12px 24px', fontSize: 18, background: '#2ecc40', color: 'white', border: 'none', borderRadius: 8, cursor: 'pointer'}} onClick={handleEnableSound}>
+              Enable Sound
+            </button>
+          </div>
+        </div>
+      )}
       <Header
         title="Kitchen Dashboard"
         notifications={notifications}

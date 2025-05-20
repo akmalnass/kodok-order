@@ -22,11 +22,16 @@ import CartPage from './components/Customer/CartPage';
 function App() {
 
   const [tables, setTables] = useState({
-    1: [], // Cart untuk Table 1
-    2: [], // Cart untuk Table 2
-    3: [], // Cart untuk Table 3
-    4: [], // Cart untuk Table 4
-    5: [], // Cart untuk Table 5
+    1: [],
+    2: [],
+    3: [], 
+    4: [], 
+    5: [],
+    6: [], 
+    7: [], 
+    8: [], 
+    9: [],
+    10: [], 
   });
 
   return (
@@ -57,7 +62,7 @@ function App() {
         <Route path="/kitchen" element={<KitchenDashboard />} />
 
         {/* Customer Menu Routes */}
-        {[1, 2, 3, 4, 5].map((tableId) => (
+        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((tableId) => (
           <Route
             key={tableId}
             path={`/customer-menu/table-${tableId}`}

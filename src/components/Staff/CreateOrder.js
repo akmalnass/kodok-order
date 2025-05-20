@@ -63,7 +63,6 @@ function CreateOrder({ role }) {
 
   const handleSubmitOrder = async () => {
     const db = getFirestore(app);
-
     const selectedItems = menu.filter((item) => item.quantity > 0);
 
     if (selectedItems.length === 0 || !tableNumber) {
@@ -99,6 +98,8 @@ function CreateOrder({ role }) {
 
       if (role === 'admin') {
         navigate('/admin/order-list');
+      } else {
+        navigate('/staff/order-list');
       }
     } catch (err) {
       console.error('Error creating order:', err);

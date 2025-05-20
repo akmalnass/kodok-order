@@ -6,7 +6,7 @@ import app from '../../firebase';
 function CustomerMenu({ tableId, cart, setCart }) {
   const [menu, setMenu] = useState([]);
   const [filteredMenu, setFilteredMenu] = useState([]);
-  const [category, setCategory] = useState('All');
+  const [category, setCategory] = useState('');
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -37,31 +37,32 @@ function CustomerMenu({ tableId, cart, setCart }) {
     }
   };
 
-const handleAddToCart = (menuItem) => {
-  setCart((prevTables) => {
-    const currentTableCart = prevTables[tableId] || [];
-    const existingItem = currentTableCart.find((item) => item.id === menuItem.id);
+  // Restore original handleAddToCart
+  const handleAddToCart = (menuItem) => {
+    setCart((prevTables) => {
+      const currentTableCart = prevTables[tableId] || [];
+      const existingItem = currentTableCart.find((item) => item.id === menuItem.id);
 
-    let updatedTableCart;
-    if (existingItem) {
-      updatedTableCart = currentTableCart.map((item) =>
-        item.id === menuItem.id ? { ...item, quantity: item.quantity + 1 } : item
-      );
-    } else {
-      updatedTableCart = [...currentTableCart, { ...menuItem, quantity: 1 }];
-    }
+      let updatedTableCart;
+      if (existingItem) {
+        updatedTableCart = currentTableCart.map((item) =>
+          item.id === menuItem.id ? { ...item, quantity: item.quantity + 1 } : item
+        );
+      } else {
+        updatedTableCart = [...currentTableCart, { ...menuItem, quantity: 1 }];
+      }
 
-    return {
-      ...prevTables,
-      [tableId]: updatedTableCart,
-    };
-  });
-};
+      return {
+        ...prevTables,
+        [tableId]: updatedTableCart,
+      };
+    });
+  };
 
   return (
     <div style={styles.container}>
       <header style={styles.header}>
-      <h1>Welcome to KodokKodok</h1>
+        <h1>Welcome to KodokKodok</h1>
         <h2>Customer Menu - Table {tableId}</h2>
       </header>
 

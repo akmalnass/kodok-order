@@ -2,20 +2,21 @@ import React, { useState, useEffect } from 'react';
 import { getFirestore, collection, getDocs, addDoc, onSnapshot } from 'firebase/firestore';
 import app from '../../firebase';
 import Header from '../Shared/Header';
-import notificationSound from '../../assets/notification.mp3';
 import OrderList from './OrderList'; // Import OrderList component
+import notificationSoundManager from '../Shared/NotificationSoundManager';
 
 function WaiterDashboard() {
   const [menu, setMenu] = useState([]);
   const [newOrder, setNewOrder] = useState([]);
   const [tableNumber, setTableNumber] = useState('');
   const [error, setError] = useState('');
-  const [tables] = useState([1, 2, 3, 4, 5]); // Senarai meja
+  const [tables] = useState([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]); // Senarai meja
   const [selectedCategory, setSelectedCategory] = useState('All'); // Default ke 'All'
   const [notifications, setNotifications] = useState([]);
   const [isUserInteracted, setIsUserInteracted] = useState(false); // Tambahkan state ini
   const [currentPage, setCurrentPage] = useState('dashboard'); // 'dashboard' atau 'orderList'
   const [prevNotificationCount, setPrevNotificationCount] = useState(0);
+  const [showEnableSound, setShowEnableSound] = useState(false);
 
   useEffect(() => {
     const db = getFirestore(app);
@@ -38,6 +39,16 @@ function WaiterDashboard() {
   }, []);
 
   useEffect(() => {
+    setShowEnableSound(!notificationSoundManager.isUnlocked);
+  }, []);
+
+  const handleEnableSound = () => {
+    notificationSoundManager.unlock();
+    setIsUserInteracted(true);
+    setShowEnableSound(false);
+  };
+
+  useEffect(() => {
     const db = getFirestore(app);
     const unsubscribe = onSnapshot(
       collection(db, 'notifications'),
@@ -51,35 +62,25 @@ function WaiterDashboard() {
           };
         }).filter((notif) => notif.role === 'Waiter'); // Hanya untuk Waiter
 
-        // Debugging notifikasi
-        console.log('Waiter Notifications:', waiterNotifications);
-
         // Jika ada notifikasi baru, mainkan suara
-        if (waiterNotifications.length > prevNotificationCount && isUserInteracted) {
-          console.log('Playing notification sound...');
-          const audio = new Audio(notificationSound);
-          audio.play().catch((err) => console.error('Audio play failed:', err));
+        if (waiterNotifications.length > prevNotificationCount && notificationSoundManager.isUnlocked) {
+          notificationSoundManager.play();
         }
 
-        // Perbarui jumlah notifikasi sebelumnya
         setPrevNotificationCount(waiterNotifications.length);
-
-        // Perbarui state notifikasi
         setNotifications(waiterNotifications);
       }
     );
-
     return () => unsubscribe();
   }, [prevNotificationCount, isUserInteracted]);
 
   useEffect(() => {
     const handleUserInteraction = () => {
       setIsUserInteracted(true);
+      notificationSoundManager.unlock();
       window.removeEventListener('click', handleUserInteraction);
     };
-
     window.addEventListener('click', handleUserInteraction);
-
     return () => {
       window.removeEventListener('click', handleUserInteraction);
     };
@@ -219,15 +220,11 @@ function WaiterDashboard() {
           Order List
         </button>
       </div>
+
       <div style={styles.form}>
         <label htmlFor="tableNumber" style={styles.label}>
           Table Number:
         </label>
-        <input
-          type="text"
-          placeholder="Enter table number"
-          style={styles.inputBox}
-        />
         <p style={styles.orText}>OR</p>
         <select
           id="tableNumber"
@@ -330,6 +327,17 @@ function WaiterDashboard() {
 
       {error && <p style={styles.error}>{error}</p>}
 
+      {showEnableSound && (
+        <div style={{position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.5)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
+          <div style={{background: 'white', padding: 32, borderRadius: 12, textAlign: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.2)'}}>
+            <h2>Enable Notification Sound</h2>
+            <p>Tap the button below to enable real-time notification sound for the waiter.</p>
+            <button style={{padding: '12px 24px', fontSize: 18, background: '#2ecc40', color: 'white', border: 'none', borderRadius: 8, cursor: 'pointer'}} onClick={handleEnableSound}>
+              Enable Sound
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -362,13 +370,6 @@ const styles = {
     textAlign: 'center',
     margin: '10px 0',
     fontWeight: 'bold',
-  },
-  input: {
-    padding: '10px',
-    fontSize: '1rem',
-    border: '1px solid #ccc',
-    borderRadius: '5px',
-    width: '100%',
   },
   menuSection: {
     marginBottom: '20px',
