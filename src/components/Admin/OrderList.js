@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useReducer } from 'react';
 import { useNavigate } from 'react-router-dom'; // Import useNavigate
-import { getFirestore, collection, getDocs, getDoc, doc, updateDoc, setDoc } from 'firebase/firestore';
+import { getFirestore, collection, getDocs, getDoc, doc, updateDoc, setDoc, onSnapshot } from 'firebase/firestore';
 import app from '../../firebase';
 import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
@@ -24,6 +24,7 @@ function OrderList() {
         return {
           ...state,
           ...action.payload, // Perbarui statistik dengan payload
+          ongoingOrdersToday: Math.max(0, action.payload.ongoingOrdersToday), // Pastikan ongoingOrdersToday tidak pernah jadi negatif
         };
       default:
         return state;
@@ -43,63 +44,62 @@ function OrderList() {
   const navigate = useNavigate(); // Inisialisasi useNavigate
 
   useEffect(() => {
-    const fetchOrders = async () => {
-      const db = getFirestore(app);
-
-      try {
-        const querySnapshot = await getDocs(collection(db, 'orders'));
-        const fetchedOrders = [];
-        let todayOrdersCount = 0;
-        let ongoingOrdersCount = 0;
-        let completedOrdersCount = 0;
-
-        const today = new Date();
-
+    const db = getFirestore(app);
+    // Use onSnapshot for real-time updates
+    const unsubscribe = onSnapshot(collection(db, 'orders'), (querySnapshot) => {
+      const fetchedOrders = [];
+      let todayOrdersCount = 0;
+      let ongoingOrdersCount = 0;
+      let completedOrdersCount = 0;
+      const today = new Date();
+      querySnapshot.forEach((doc) => {
+        const order = { id: doc.id, ...doc.data() };
+        const createdAt = order.createdAt?.toDate();
+        if (
+          createdAt &&
+          createdAt.getDate() === today.getDate() &&
+          createdAt.getMonth() === today.getMonth() &&
+          createdAt.getFullYear() === today.getFullYear()
+        ) {
+          fetchedOrders.push(order);
+          todayOrdersCount++;
+          if (order.status === 'Pending' || order.status === 'Preparing') {
+            ongoingOrdersCount++;
+          }
+          if (order.status === 'Completed') {
+            completedOrdersCount++;
+          }
+        }
+      });
+      setOrders(fetchedOrders);
+      // Fetch monthly order count directly from Firestore (not from stats)
+      const salesDocRef = doc(db, 'sales', 'dashboard');
+      getDoc(salesDocRef).then((salesDoc) => {
+        // Calculate monthly order count by counting all orders in this month
+        let monthlyOrderCount = 0;
         querySnapshot.forEach((doc) => {
-          const order = { id: doc.id, ...doc.data() };
+          const order = doc.data();
           const createdAt = order.createdAt?.toDate();
-
-          // Tapis pesanan untuk tarikh semasa
           if (
             createdAt &&
-            createdAt.getDate() === today.getDate() &&
             createdAt.getMonth() === today.getMonth() &&
             createdAt.getFullYear() === today.getFullYear()
           ) {
-            fetchedOrders.push(order);
-
-            // Kira statistik
-            todayOrdersCount++;
-            if (order.status === 'Pending' || order.status === 'Preparing') {
-              ongoingOrdersCount++;
-            }
-            if (order.status === 'Completed') {
-              completedOrdersCount++;
-            }
+            monthlyOrderCount++;
           }
         });
-
-        // Ambil Monthly Order dari Firestore
-        const salesDocRef = doc(db, 'sales', 'dashboard');
-        const salesDoc = await getDoc(salesDocRef);
-        const monthlyTotalOrders = salesDoc.exists() ? salesDoc.data().monthlyTotalOrders : 0;
-
-        setOrders(fetchedOrders);
         dispatch({
           type: 'UPDATE_STATS',
           payload: {
             totalOrdersToday: todayOrdersCount,
             ongoingOrdersToday: ongoingOrdersCount,
             completedOrdersToday: completedOrdersCount,
-            totalMonthlyOrders: monthlyTotalOrders, // Tetapkan nilai dari Firestore
+            totalMonthlyOrders: monthlyOrderCount,
           },
         });
-      } catch (err) {
-        console.error('Error fetching orders:', err);
-      }
-    };
-
-    fetchOrders();
+      });
+    });
+    return () => unsubscribe();
   }, []);
 
   useEffect(() => {
@@ -216,39 +216,16 @@ function OrderList() {
       alert('Please select an order to confirm payment.');
       return;
     }
-
     const db = getFirestore(app);
-
     try {
       // Update status pesanan ke 'Completed' di Firestore
       await updateDoc(doc(db, 'orders', selectedOrder.id), {
         status: 'Completed',
       });
-
       // Update statistik di Firestore
       await updateSales(selectedOrder.totalPrice);
-
-      // Update state orders di UI
-      setOrders((prevOrders) =>
-        prevOrders.map((order) =>
-          order.id === selectedOrder.id ? { ...order, status: 'Completed' } : order
-        )
-      );
-
-      // Update statistik di UI
-      dispatch({
-        type: 'UPDATE_STATS',
-        payload: {
-          totalOrdersToday: stats.totalOrdersToday,
-          ongoingOrdersToday: stats.ongoingOrdersToday - 1, // Kurangi ongoing orders
-          completedOrdersToday: stats.completedOrdersToday + 1, // Tambahkan completed orders
-          totalMonthlyOrders: stats.totalMonthlyOrders + 1, // Tambahkan total monthly orders
-        },
-      });
-
       // Reset selectedOrder setelah pembayaran berhasil
       setSelectedOrder(null);
-
       alert('Payment confirmed and order marked as completed!');
     } catch (err) {
       console.error('Error confirming payment:', err);
@@ -350,7 +327,25 @@ function OrderList() {
           {filteredOrders.map((order, index) => (
             <button
               key={order.id}
-              style={styles.orderButton}
+              style={{
+                ...styles.orderButton,
+                backgroundColor:
+                  selectedOrder && selectedOrder.id === order.id
+                    ? '#0c8c4c' // Highlighted color
+                    : '#00D16A', // Default color
+                color:
+                  selectedOrder && selectedOrder.id === order.id
+                    ? '#fff'
+                    : '#fff',
+                fontWeight:
+                  selectedOrder && selectedOrder.id === order.id
+                    ? 'bold'
+                    : 'normal',
+                border:
+                  selectedOrder && selectedOrder.id === order.id
+                    ? '2px solid #0056b3'
+                    : 'none',
+              }}
               onClick={() => handleSelectOrder(order)}
             >
               #{index + 1} - Table {order.tableNumber || 'N/A'}
