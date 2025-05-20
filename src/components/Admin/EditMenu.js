@@ -1,44 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getFirestore, doc, getDoc, updateDoc, deleteDoc } from 'firebase/firestore';
-import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
-import { storage } from '../../firebase'; // Import Firebase Storage
 import app from '../../firebase'; // Import Firebase config
-
-const handleImageUpload = async (file) => {
-  try {
-    console.log('New image file:', file); // Log fail gambar
-    const storageRef = ref(storage, `menu-images/${file.name}`);
-    const uploadTask = uploadBytesResumable(storageRef, file);
-
-    return new Promise((resolve, reject) => {
-      uploadTask.on(
-        'state_changed',
-        (snapshot) => {
-          const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-          console.log(`Upload is ${progress}% done`); // Log progres muat naik
-        },
-        (error) => {
-          console.error('Upload error:', error); // Log ralat muat naik
-          reject(error);
-        },
-        async () => {
-          try {
-            const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-            console.log('Image uploaded successfully:', downloadURL); // Log URL gambar
-            resolve(downloadURL);
-          } catch (error) {
-            console.error('Error getting download URL:', error); // Log ralat URL
-            reject(error);
-          }
-        }
-      );
-    });
-  } catch (error) {
-    console.error('Error uploading file:', error); // Log ralat umum
-    throw error;
-  }
-};
 
 function EditMenu() {
   const { id } = useParams(); // Ambil ID menu dari URL
@@ -49,7 +12,6 @@ function EditMenu() {
   const [description, setDescription] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
-  const [newImageFile, setNewImageFile] = useState(null);
   const [imageUrlInput, setImageUrlInput] = useState(''); // Untuk menyimpan URL gambar
   const [isSubmitting, setIsSubmitting] = useState(false); // Untuk mengelakkan klik berganda
 
@@ -82,13 +44,6 @@ function EditMenu() {
 
     try {
       let imageUrl = imageUrlInput; // Gunakan URL gambar jika diisi
-
-      // Jika URL gambar tidak diisi, muat naik gambar baru jika ada
-      if (!imageUrl && newImageFile) {
-        console.log('Uploading new image...');
-        imageUrl = await handleImageUpload(newImageFile); // Panggil fungsi muat naik
-        console.log('Image URL:', imageUrl); // Log URL gambar
-      }
 
       // Kemas kini menu dalam Firestore
       console.log('Updating Firestore document...');
@@ -176,15 +131,6 @@ function EditMenu() {
           value={imageUrlInput}
           onChange={(e) => setImageUrlInput(e.target.value)}
           style={styles.input}
-        />
-        <input
-          type="file"
-          accept="image/*"
-          onChange={(e) => {
-            const file = e.target.files[0];
-            setNewImageFile(file);
-            console.log('Selected image file:', file); // Log fail gambar
-          }}
         />
         <div style={styles.buttonGroup}>
           <button
