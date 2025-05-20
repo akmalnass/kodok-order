@@ -39,6 +39,7 @@ function CustomerMenu({ tableId, cart, setCart }) {
 
   // Restore original handleAddToCart
   const handleAddToCart = (menuItem) => {
+    let showAlert = true;
     setCart((prevTables) => {
       const currentTableCart = prevTables[tableId] || [];
       const existingItem = currentTableCart.find((item) => item.id === menuItem.id);
@@ -51,7 +52,11 @@ function CustomerMenu({ tableId, cart, setCart }) {
       } else {
         updatedTableCart = [...currentTableCart, { ...menuItem, quantity: 1 }];
       }
-
+      // Alert hanya sekali selepas setCart selesai
+      if (showAlert) {
+        setTimeout(() => alert('Item added to cart'), 0);
+        showAlert = false;
+      }
       return {
         ...prevTables,
         [tableId]: updatedTableCart,
