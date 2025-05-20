@@ -216,6 +216,10 @@ function OrderList() {
       alert('Please select an order to confirm payment.');
       return;
     }
+    if (selectedOrder.status === 'Completed') {
+      alert('Order has already been paid. Duplicate payment is not allowed.');
+      return;
+    }
     const db = getFirestore(app);
     try {
       // Update status pesanan ke 'Completed' di Firestore
