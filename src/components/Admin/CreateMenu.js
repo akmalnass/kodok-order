@@ -1,82 +1,21 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getFirestore, collection, addDoc } from 'firebase/firestore';
-import { getStorage, ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
-import Compressor from 'compressorjs';
 import app from '../../firebase'; // Import Firebase config
 
 function CreateMenu() {
   const [menuName, setMenuName] = useState('');
   const [description, setDescription] = useState('');
   const [price, setPrice] = useState('');
-  const [imageFile, setImageFile] = useState(null);
-  const [uploading, setUploading] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [category, setCategory] = useState('');
   const [imageUrlInput, setImageUrlInput] = useState(''); // Untuk menyimpan URL gambar
+  const [category, setCategory] = useState('');
   const navigate = useNavigate();
-
-  const handleImageUpload = (file) => {
-    new Compressor(file, {
-      quality: 0.6, // Kurangkan kualiti gambar untuk saiz lebih kecil
-      success(result) {
-        setImageFile(result); // Simpan gambar yang telah dimampatkan
-      },
-      error(err) {
-        console.error('Compression error:', err);
-      },
-    });
-  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     const db = getFirestore(app);
-    const storage = getStorage(app);
 
     try {
-      setUploading(true);
-
-      let imageUrl = imageUrlInput; // Gunakan URL gambar jika diisi
-
-      // Jika URL gambar tidak diisi, muat naik gambar baru jika ada
-      if (!imageUrl && imageFile) {
-        console.log('Uploading image...');
-        const storageRef = ref(storage, `menu-images/${imageFile.name}`);
-        const uploadTask = uploadBytesResumable(storageRef, imageFile);
-
-        await new Promise((resolve, reject) => {
-          uploadTask.on(
-            'state_changed',
-            (snapshot) => {
-              const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-              console.log(`Upload is ${progress}% done`);
-              setProgress(progress); // Kemaskini progres
-            },
-            (error) => {
-              console.error('Upload error:', error); // Log ralat muat naik
-              reject(error);
-            },
-            async () => {
-              try {
-                const url = await getDownloadURL(uploadTask.snapshot.ref);
-                console.log('Image uploaded successfully:', url); // Log URL gambar
-                imageUrl = url; // Simpan URL gambar
-                resolve();
-              } catch (error) {
-                console.error('Error getting download URL:', error); // Log ralat URL
-                reject(error);
-              }
-            }
-          );
-        });
-      } else if (!imageUrl) {
-        console.log('No image file or URL provided.');
-      } else if (imageUrlInput && imageFile) {
-        alert('Please provide either an image URL or upload a file, not both.');
-        setUploading(false);
-        return;
-      }
-
       // Simpan data menu ke Firestore
       console.log('Saving menu to Firestore...');
       await addDoc(collection(db, 'menu'), {
@@ -84,7 +23,7 @@ function CreateMenu() {
         description,
         price: parseFloat(price),
         category,
-        imageUrl, // Simpan URL gambar
+        imageUrl: imageUrlInput, // Simpan URL gambar
         createdAt: new Date(),
       });
 
@@ -93,8 +32,6 @@ function CreateMenu() {
     } catch (error) {
       console.error('Error creating menu:', error); // Log ralat
       alert('Failed to create menu. Please try again.');
-    } finally {
-      setUploading(false);
     }
   };
 
@@ -147,14 +84,9 @@ function CreateMenu() {
           onChange={(e) => setImageUrlInput(e.target.value)}
           style={styles.input}
         />
-        <input
-          type="file"
-          accept="image/*"
-          onChange={(e) => handleImageUpload(e.target.files[0])}
-        />
         <div style={{ display: 'flex', gap: '10px' }}>
-          <button type="submit" style={styles.button} disabled={uploading}>
-            {uploading ? 'Uploading...' : 'Create Menu'}
+          <button type="submit" style={styles.button}>
+            Create Menu
           </button>
           <button
             type="button"
@@ -164,7 +96,6 @@ function CreateMenu() {
             Cancel
           </button>
         </div>
-        {uploading && <p>Uploading: {progress.toFixed(2)}%</p>}
       </form>
     </div>
   );
