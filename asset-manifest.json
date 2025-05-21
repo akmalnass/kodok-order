@@ -1,17 +1,17 @@
 {
   "files": {
     "main.css": "/kodok-order/static/css/main.5243db61.css",
-    "main.js": "/kodok-order/static/js/main.ab5744ba.js",
+    "main.js": "/kodok-order/static/js/main.9d4f16df.js",
     "static/media/Coffee.jpg": "/kodok-order/static/media/Coffee.2f68acb185c3c0ad3f2c.jpg",
     "static/media/KodokKodok.png": "/kodok-order/static/media/KodokKodok.235f192ff2e381797185.png",
     "static/media/notification.mp3": "/kodok-order/static/media/notification.db8bbaf16e4c629a98ae.mp3",
     "static/media/notification-bell.png": "/kodok-order/static/media/notification-bell.ee39a6cf1135e35ee3d6.png",
     "index.html": "/kodok-order/index.html",
     "main.5243db61.css.map": "/kodok-order/static/css/main.5243db61.css.map",
-    "main.ab5744ba.js.map": "/kodok-order/static/js/main.ab5744ba.js.map"
+    "main.9d4f16df.js.map": "/kodok-order/static/js/main.9d4f16df.js.map"
   },
   "entrypoints": [
     "static/css/main.5243db61.css",
-    "static/js/main.ab5744ba.js"
+    "static/js/main.9d4f16df.js"
   ]
 }
