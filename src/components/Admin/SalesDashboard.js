@@ -275,7 +275,19 @@ function SalesDashboard() {
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis dataKey="month" />
             <YAxis />
-            <Tooltip />
+            <Tooltip
+              formatter={(value) => `RM ${Number(value).toFixed(2)}`}
+              labelFormatter={(label, payload) => {
+                if (Array.isArray(payload) && payload.length > 0) {
+                  const sales = payload[0].value;
+                  return [
+                    label,
+                    `sales : ${Number(sales).toFixed(2)}`
+                  ];
+                }
+                return label;
+              }}
+            />
             <Bar dataKey="sales" fill="#1e88e5" />
           </BarChart>
         </div>
@@ -287,7 +299,19 @@ function SalesDashboard() {
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis dataKey="day" />
             <YAxis />
-            <Tooltip />
+            <Tooltip
+              formatter={(value) => `RM ${Number(value).toFixed(2)}`}
+              labelFormatter={(label, payload) => {
+                if (Array.isArray(payload) && payload.length > 0) {
+                  const sales = payload[0].value;
+                  return [
+                    label,
+                    `sales : ${Number(sales).toFixed(2)}`
+                  ];
+                }
+                return label;
+              }}
+            />
             <Line type="monotone" dataKey="sales" stroke="#43a047" />
           </LineChart>
         </div>
@@ -309,7 +333,9 @@ function SalesDashboard() {
                 <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
               ))}
             </Pie>
-            <Tooltip />
+            <Tooltip
+              formatter={(value) => `${value}`}
+            />
           </PieChart>
         </div>
       </div>
