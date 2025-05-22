@@ -262,7 +262,7 @@ function KitchenDashboard() {
               {order.customerNotes && (
                 <p><strong>Customer Notes:</strong> {order.customerNotes}</p>
               )}
-              {order.status === 'Pending' && (
+              {(order.status === 'Pending' || order.status === 'Preparing') && (
                 <button
                   style={styles.button}
                   onClick={() => handleMarkAsReady(order.id, order.tableNumber)}
