@@ -4,20 +4,42 @@ import { collection, onSnapshot, } from 'firebase/firestore';
 import { db } from '../firebase'; // Sesuaikan path dengan lokasi baru
 import Header from '../components/Shared/Header';
 import logo from '../assets/KodokKodok.png';
-
+import adminNotificationSound from '../assets/admin-notifications.mp3'; // Import bunyi notifikasi
 
 function AdminPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const [notifications, setNotifications] = useState([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true); // State untuk Sidebar
+  const [adminAudio] = useState(typeof Audio !== 'undefined' ? new Audio(adminNotificationSound) : null);
+  const [lastNotifCount, setLastNotifCount] = useState(0);
+  const [soundEnabled, setSoundEnabled] = useState(false); // Tambah button untuk enable sound
+  const [showSoundPopup, setShowSoundPopup] = useState(false); // State untuk pop up
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
   };
 
+  const enableSound = () => {
+    setSoundEnabled(true);
+    setShowSoundPopup(false);
+    if (adminAudio) {
+      adminAudio.play();
+    }
+  };
+
+  // Pop up enable sound jika belum aktif
+  useEffect(() => {
+    if (!soundEnabled && location.pathname === '/admin/dashboard') {
+      setShowSoundPopup(true);
+    } else {
+      setShowSoundPopup(false);
+    }
+  }, [soundEnabled, location.pathname]);
+
   // Mendengarkan notifikasi secara real-time dari Firestore
   useEffect(() => {
+    if (!soundEnabled) return; // Jangan play sound jika belum enable
     const unsubscribe = onSnapshot(
       collection(db, 'notifications'),
       (snapshot) => {
@@ -27,16 +49,21 @@ function AdminPage() {
             return {
               id: doc.id,
               ...data,
-              time: data.time.toDate().toLocaleString(), // Konversi Timestamp ke string
+              time: data.time.toDate().toLocaleString(),
             };
           })
-          .filter((notif) => notif.role === 'Admin'); // Filter untuk Admin
+          .filter((notif) => notif.role === 'Admin');
         setNotifications(adminNotifications);
+        // Play sound if ada notifikasi baru
+        if (adminAudio && adminNotifications.length > lastNotifCount) {
+          adminAudio.currentTime = 0;
+          adminAudio.play();
+        }
+        setLastNotifCount(adminNotifications.length);
       }
     );
-
-    return () => unsubscribe(); // Bersihkan listener saat komponen unmount
-  }, []);
+    return () => unsubscribe();
+  }, [adminAudio, lastNotifCount, soundEnabled]);
 
   const handleLogout = () => {
     localStorage.clear(); // Clear all data from localStorage
@@ -131,6 +158,18 @@ function AdminPage() {
         <div style={styles.content}>
           <Outlet />
         </div>
+        {/* Pop up enable sound */}
+        {showSoundPopup && (
+          <div style={styles.popupOverlay}>
+            <div style={styles.popupBox}>
+              <h3>Enable Notification Sound</h3>
+              <p>Click the button below to enable notification sound for Admin.</p>
+              <button onClick={enableSound} style={styles.enableSoundButton}>
+                Enable Notification Sound
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -226,6 +265,38 @@ const styles = {
     display: 'flex',
     flexDirection: 'column',
     overflowX: 'hidden',
+  },
+  enableSoundButton: {
+    marginTop: '20px',
+    padding: '10px 20px',
+    fontSize: '16px',
+    fontWeight: '500',
+    color: '#fff',
+    backgroundColor: '#007BFF',
+    border: 'none',
+    borderRadius: '5px',
+    cursor: 'pointer',
+    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)',
+  },
+  popupOverlay: {
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    width: '100vw',
+    height: '100vh',
+    background: 'rgba(0,0,0,0.4)',
+    zIndex: 2000,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  popupBox: {
+    background: '#fff',
+    padding: '32px 40px',
+    borderRadius: '12px',
+    textAlign: 'center',
+    boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+    minWidth: '320px',
   },
   '@media (max-width: 768px)': {
     sidebar: {

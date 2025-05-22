@@ -46,10 +46,24 @@ function CartPage({ cart, setCart }) {
         time: new Date(),
         role: 'Kitchen',
         isRead: false,
+      });
+      // Tambahkan notifikasi untuk Admin
+      await addDoc(collection(db, 'notifications'), {
+        message: `New order submitted by Customer for Table ${tableNumber}`,
+        time: new Date(),
+        role: 'Admin',
+        isRead: false,
+      });
+      // Tambahkan notifikasi untuk Waiter
+      await addDoc(collection(db, 'notifications'), {
+        message: `New order submitted by Customer for Table ${tableNumber}`,
+        time: new Date(),
+        role: 'Waiter',
+        isRead: false,
       }).then(() => {
-        console.log('Notification for Kitchen created successfully.');
+        console.log('Notification for Kitchen, Admin, and Waiter created successfully.');
       }).catch((err) => {
-        console.error('Error creating notification for Kitchen:', err);
+        console.error('Error creating notification for Kitchen, Admin, and Waiter:', err);
       });
 
       // Reset cart untuk tabel ini
